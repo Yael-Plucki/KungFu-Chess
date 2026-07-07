@@ -60,6 +60,7 @@ void parseBoard(){
     }
 
 }
+
 int main() {
     return 0;
 }
