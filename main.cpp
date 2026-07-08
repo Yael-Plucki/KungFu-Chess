@@ -1,66 +1,87 @@
 #include <iostream>
-#include <string>
 #include <vector>
 #include <sstream>
 
-// פונקציה לבדיקת תקינות אסימון
-bool isValidToken(const std::string& token) {
-    if (token == ".") return true;
-    if (token.length() == 2) {
-        std::string colors = "wb";
-        std::string pieces = "KQRBNP";
-        return (colors.find(token[0]) != std::string::npos && 
-                pieces.find(token[1]) != std::string::npos);
-    }
-    return false;
-}
-void parseBoard(){
-    std::string line;
-    std::vector<std::vector<std::string>> board;
-    bool isParsingBoard = false;
+#include "Board.hpp"
+#include "GameState.hpp"
+#include "CommandProcessor.hpp"
 
-    while (std::getline(std::cin, line)) {
-        // נקה רווחים מיותרים מסוף השורה אם יש
-        if (line == "Board:") {
-            isParsingBoard = true;
+bool isValidToken(const std::string& token)
+{
+    if (token == ".")
+        return true;
+
+    if (token.length() != 2)
+        return false;
+
+    bool validColor =
+        token[0] == 'w' || token[0] == 'b';
+
+    bool validPiece =
+        token[1] == 'K' ||
+        token[1] == 'Q' ||
+        token[1] == 'R' ||
+        token[1] == 'B' ||
+        token[1] == 'N' ||
+        token[1] == 'P';
+
+    return validColor && validPiece;
+}
+
+int main()
+{
+    std::vector<std::vector<std::string>> grid;
+
+    std::string line;
+    size_t expectedCols = 0;
+
+    while (std::getline(std::cin, line) && line != "Commands:")
+    {
+        if (line.find("Board:") != std::string::npos)
             continue;
-        }
-        if (line == "Commands:") {
-            isParsingBoard = false;
-            break; // סיום עיבוד הלוח
-        }
-        if (!isParsingBoard || line.empty()) continue;
+
+        if (line.empty())
+            continue;
 
         std::stringstream ss(line);
+
         std::string token;
         std::vector<std::string> row;
 
-        while (ss >> token) {
-            if (!isValidToken(token)) {
-            // כאן קורית השגיאה בטסטים שלך
+        while (ss >> token)
+        {
+            if (!isValidToken(token))
+            {
                 std::cout << "ERROR UNKNOWN_TOKEN" << std::endl;
                 return 0;
             }
+
             row.push_back(token);
         }
-    
-        // בדיקת תקינות רוחב שורה...
-        if (!row.empty()) {
-            if (!board.empty() && row.size() != board[0].size()) {
+
+        if (!row.empty())
+        {
+            if (expectedCols == 0)
+            {
+                expectedCols = row.size();
+            }
+            else if (row.size() != expectedCols)
+            {
                 std::cout << "ERROR ROW_WIDTH_MISMATCH" << std::endl;
                 return 0;
             }
-            board.push_back(row);
-        }
-    }
-    for(int i=0;i<board.size();i++){
-        for(int j=0;j<board[i].size();j++){
-            std::cout << board[i][j];
+
+            grid.push_back(row);
         }
     }
 
-}
+    Board board(grid);
 
-int main() {
+    GameState game(board);
+
+    CommandProcessor processor(game);
+
+    processor.run();
+
     return 0;
 }
