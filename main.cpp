@@ -2,9 +2,9 @@
 #include <vector>
 #include <sstream>
 
-#include "Board.hpp"
-#include "GameState.hpp"
-#include "CommandProcessor.hpp"
+#include "include/model/Board.hpp"
+#include "include/model/GameState.hpp"
+#include "include/model/CommandProcessor.hpp"
 
 bool isValidToken(const std::string& token)
 {
