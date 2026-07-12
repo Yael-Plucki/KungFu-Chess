@@ -1,19 +1,22 @@
 #pragma once
+
 #include <vector>
-#include <string> 
 #include "Piece.hpp"
-using namespace std;
-class Board
-{
-    private:
-        vector<vector<Piece>> grid;
-    public:
-        Board(const vestor<vestor<Piece> g);
-        int getWidth()const;
-        int getHeight() const;
-        void addPiece(Piece p);
-        void removePiece(Position p);
-        std::optional<Piece> get_piece(Position p) const;
-        bool is_inside(Position p) const;
-        void move_piece(Position source, Position destination);
+#include "Position.hpp"
+
+class Board {
+private:
+    std::vector<std::vector<Piece>> grid;
+    int rows, cols;
+
+public:
+    Board(const std::vector<std::vector<Piece>>& initial_grid);
+
+    int getRows() const;
+    int getCols() const;
+
+    Piece at(int row, int col) const;
+    void setPiece(int row, int col, const Piece& piece);
+    
+    bool isValidPosition(int row, int col) const;
 };

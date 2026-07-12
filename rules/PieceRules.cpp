@@ -82,3 +82,74 @@ bool Pawn::isValidMove(const Board& board, Position from, Position to) const ove
     if (!isForward(color, from, to)) return false;
     return isOneStep(from, to);
 }};
+
+
+bool GameState::isPawnMove(const std::string& piece,
+    int fromRow,
+    int fromCol,
+    int toRow,
+    int toCol) const
+{
+    std::string destination = board.getPiece(toRow, toCol);
+
+    if (piece[0] == 'w')
+    {
+        // move forward one cell
+        if (toCol == fromCol &&
+            toRow == fromRow - 1 &&
+            destination == ".")
+        {
+            return true;
+        }
+
+        // move forward two cells from start row
+        if (fromRow == board.getRows() - 1 &&
+            toCol == fromCol &&
+            toRow == fromRow - 2 &&
+            board.getPiece(fromRow - 1, fromCol) == "." &&
+            destination == ".")
+        {
+            return true;
+        }
+
+        // capture
+        if (toRow == fromRow - 1 &&
+            std::abs(toCol - fromCol) == 1 &&
+            destination != "." &&
+            destination[0] == 'b')
+        {
+            return true;
+        }
+    }
+    else
+    {
+        // move forward one cell
+        if (toCol == fromCol &&
+            toRow == fromRow + 1 &&
+            destination == ".")
+        {
+            return true;
+        }
+
+        // move forward two cells from start row
+        if (fromRow == 0 &&
+            toCol == fromCol &&
+            toRow == fromRow + 2 &&
+            board.getPiece(fromRow + 1, fromCol) == "." &&
+            destination == ".")
+        {
+            return true;
+        }
+
+        // capture
+        if (toRow == fromRow + 1 &&
+            std::abs(toCol - fromCol) == 1 &&
+            destination != "." &&
+            destination[0] == 'w')
+        {
+            return true;
+        }
+    }
+
+    return false;
+}

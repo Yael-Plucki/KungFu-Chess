@@ -1,48 +1,22 @@
 #include "Board.hpp"
-#include <iostream>
 
-Board::Board(const vector<Piece>& grid)
-    : grid(grid)
-{
+Board::Board(const std::vector<std::vector<Piece>>& initial_grid) 
+    : grid(initial_grid) {
+    rows = grid.size();
+    cols = (rows > 0) ? grid[0].size() : 0;
 }
 
-int Board::getRows() const
-{
-    return grid.size();
+int Board::getRows() const { return rows; }
+int Board::getCols() const { return cols; }
+
+Piece Board::at(int row, int col) const {
+    return grid[row][col];
 }
 
-int Board::getCols() const
-{
-    if (grid.empty())
-        return 0;
-
-    return grid[0].size();
+void Board::setPiece(int row, int col, const Piece& piece) {
+    grid[row][col] = piece;
 }
 
-bool Board::isValidPosition(Position p) const
-{
-    return p.getRow() >= 0 &&
-    p.getRow() < getRows() &&
-    p.getCol() >= 0 &&
-    p.getCol() < getCols();
+bool Board::isValidPosition(int row, int col) const {
+    return (row >= 0 && row < rows && col >= 0 && col < cols);
 }
-
-Piece Board::getPiece(Position p) const
-{
-    if (!isValidPosition(p))
-        return "";
-
-    return grid[p.getRow()][p.getCol()];
-}
-bool Board::isEmpty(Position p){
-    if(grid[p.getRow()][p.getCol()].getKind()==Kind::Empty)return true;
-    return false;
-}
-void Board::movePiece(Position to, const Piece& piece)
-{
-    if (isValidPosition(to) && isEmpty(to)){
-        grid[p.getRow()][p.getCol()] = piece;
-        piece.setPosition(to);
-    }
-}
-

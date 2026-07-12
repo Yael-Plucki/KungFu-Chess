@@ -1,4 +1,6 @@
-#include "../model/Piece.hpp"
+#include "../model/Board.hpp"
+#include "../io/BoardPrinter.hpp"
+#include <iostream>
 std::string BoardPrinter::parsePiece(Piece p) {
     if (p.getKind() == Kind::Empty) {
         return ".";
@@ -25,7 +27,7 @@ void BoardPrinter::print(Board grid) const
     {
         for (int j = 0; j < grid.getCols(); j++)
         {
-            std::cout << parsePiece(grid[i][j]);
+            std::cout << parsePiece(grid.at(i, j));
 
             if (j + 1 < grid.getCols())
                 std::cout << " ";
