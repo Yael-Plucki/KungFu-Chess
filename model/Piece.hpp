@@ -3,7 +3,7 @@
 #include <string>
 
 enum class Color { White, Black };
-enum class Kind { King, Queen, Rook, Bishop, Knight, Pawn };
+enum class Kind { Empty, King, Queen, Rook, Bishop, Knight, Pawn };
 enum class State { Idle, Moving, Captured };
 
 class Piece {
@@ -22,10 +22,10 @@ class Piece {
         int getId() const { return id; }
         Color getColor() const { return color; }
         Kind getKind() const { return kind; }
-        Position getCell() const { return cell; }
+        Position getPosition() const { return cell; }
         State getState() const { return state; }
 
         // Setters
-        void setCell(Position newPos) { cell = newPos; }
+        void setPosition(Position newPos) { cell = newPos; }
         void setState(State newState) { state = newState; }
 };

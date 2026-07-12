@@ -1,4 +1,4 @@
-#include "../include/model/Position.hpp"
+#include "Position.hpp"
 
     Position::Position(int r, int c) : row(r), col(c) {}
 
@@ -11,4 +11,10 @@
     }
     std::string Position::toString() const{
         return "("+std::to_string(row)+", "+std::to_string(col)+")";
+    }
+    int Position::getCol(){
+        return col;
+    }
+    int Position::getRow(){
+        return row;
     }
