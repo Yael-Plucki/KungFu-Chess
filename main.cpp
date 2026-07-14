@@ -1,20 +1,18 @@
 #include <iostream>
-#include <vector>
-#include <sstream>
+#include "texttests/ScriptRunner.hpp"
 
-#include "model/Board.hpp"
-#include "model/GameState.hpp"
-#include "model/CommandProcessor.hpp"
-
-int main()
-{
-    Board board=BoardParser::parseBoard();
-
-    GameState game(board);
-
-    CommandProcessor processor(game);
-
-    processor.run();
+int main() {
+    try {
+        ScriptRunner runner;
+        ScriptResult result = runner.run_interactive();
+        if (!result.passed) {
+            std::cout << result.error << std::endl;
+            return 1;
+        }
+    } catch (const std::exception& e) {
+        std::cout << e.what() << std::endl;
+        return 1;
+    }
 
     return 0;
 }

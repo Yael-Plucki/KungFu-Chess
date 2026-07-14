@@ -1,103 +1,41 @@
-void GameState::handleClick(int x, int y)
-{
-    if (gameOver)
-        return;
+#include "Controller.hpp"
+#include "../engine/GameEngine.hpp"
+#include "BoardMapper.hpp"
 
-    int row = y / 100;
-    int col = x / 100;
-    
-    if (!board.isValidPosition(row, col))
-    return;
+Controller::Controller(GameEngine& engine, const BoardMapper& mapper)
+    : gameEngine(engine), boardMapper(mapper), selected_cell(std::nullopt) {}
 
-    std::string piece = board.getPiece(row, col);
+void Controller::click(int x, int y) {
+    std::optional<Position> clicked_cell = boardMapper.pixel_to_cell(x, y);
 
-    if (isAirborne &&
-        piece != "." &&
-        piece[0] != airbornePiece[0] &&
-        row == airborneRow &&
-        col == airborneCol)
-        {
-            board.setPiece(row, col, ".");
-            return;
+    if (!clicked_cell.has_value()) {
+        if (selected_cell.has_value()) {
+            selected_cell = std::nullopt;
         }
-    
-    if (hasPendingMove)
-        return;
-
-    if (selectedRow == -1)
-    {
-        if (piece != ".")
-        {
-            selectedRow = row;
-            selectedCol = col;
-        }
-        
         return;
     }
-    
-    std::string selectedPiece = board.getPiece(selectedRow, selectedCol);
 
-    if (piece != "." &&
-        piece[0] == selectedPiece[0])
-    {
-        selectedRow = row;
-        selectedCol = col;
-    }
-    else
-    {
-        if (!isLegalMove(selectedPiece,
-            selectedRow,
-            selectedCol,
-            row,
-            col))
-        {
-            return;
+    GameSnapshot snap = gameEngine.snapshot(selected_cell);
+
+    if (!selected_cell.has_value()) {
+        if (!snap.is_empty(clicked_cell.value())) {
+            selected_cell = clicked_cell;
         }
-
-        hasPendingMove = true;
-        moveFinishTime =
-        gameClock +
-        getMoveDistance(selectedPiece,
-                        selectedRow,
-                        selectedCol,
-                        row,
-                        col) * MOVE_DURATION;
-
-        fromRow = selectedRow;
-        fromCol = selectedCol;
-        toRow = row;
-        toCol = col;
-        movingPiece = selectedPiece;
-        selectedRow = -1;
-        selectedCol = -1;
+        return;
     }
+
+    std::optional<SnapshotPiece> selected_piece = snap.piece_at(selected_cell.value());
+    std::optional<SnapshotPiece> clicked_piece = snap.piece_at(clicked_cell.value());
+    if (clicked_piece.has_value() && selected_piece.has_value() &&
+        clicked_piece->color == selected_piece->color) {
+        selected_cell = clicked_cell;
+        return;
+    }
+
+    gameEngine.request_move(selected_cell.value(), clicked_cell.value());
+    selected_cell = std::nullopt;
 }
-void GameState::jump(int x, int y)
-{
-    if (gameOver)
-        return;
 
-    if (hasPendingMove)
-        return;
-
-    int row = y / 100;
-    int col = x / 100;
-
-    if (!board.isValidPosition(row, col))
-        return;
-
-    if (board.getPiece(row, col) == ".")
-        return;
-
-    isAirborne = true;
-
-    airborneRow = row;
-    airborneCol = col;
-    airbornePiece = board.getPiece(row, col);
-
-    hasPendingJump = true;
-    jumpFinishTime = gameClock + MOVE_DURATION;
-
-    selectedRow = -1;
-    selectedCol = -1;
+std::optional<Position> Controller::get_selected_cell() const {
+    return selected_cell;
 }

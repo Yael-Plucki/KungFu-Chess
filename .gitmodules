@@ -1,0 +1,3 @@
+[submodule "CTD26"]
+	path = CTD26
+	url = https://github.com/KamaTechOrg/CTD26.git

@@ -1,6 +1,14 @@
-#define PIXEL_X 100
-#define PIXEL_Y 100
+#pragma once
+#include <optional>
+#include "../model/GameConstants.hpp"
+#include "../model/Position.hpp"
 
-class Board_mapper{
+class BoardMapper {
+private:
+    int rows;
+    int cols;
+
+public:
+    BoardMapper(int rows, int cols);
     std::optional<Position> pixel_to_cell(int x, int y) const;
-}
+};

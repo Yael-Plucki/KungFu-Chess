@@ -1,6 +1,5 @@
 #pragma once
 #include "Position.hpp"
-#include <string>
 
 enum class Color { White, Black };
 enum class Kind { Empty, King, Queen, Rook, Bishop, Knight, Pawn };
@@ -16,7 +15,11 @@ class Piece {
         State state;
     public:
         Piece(Color clr, Kind k, Position cll)
-            : id_(global_id++), color_(clr), kind_(k), cell_(cll), state(State::Idle) {}
+            : id(global_id++), color(clr), kind(k), cell(cll), state(State::Idle) {}
+
+        static Piece empty(const Position& pos) {
+            return Piece(Color::White, Kind::Empty, pos);
+        }
 
         // Getters
         int getId() const { return id; }
@@ -28,4 +31,5 @@ class Piece {
         // Setters
         void setPosition(Position newPos) { cell = newPos; }
         void setState(State newState) { state = newState; }
+        void setKind(Kind newKind) { kind = newKind; }
 };

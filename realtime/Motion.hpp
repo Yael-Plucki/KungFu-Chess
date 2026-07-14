@@ -3,15 +3,19 @@
 
 class Motion {
 public:
-    Motion(int piece_id, Position source, Position destination);
-    int get_piece_id() const;
-    Position get_source() const;
-    Position get_destination() const;
-    float get_progress() const;
-    void set_progress(float progress);
+    Motion(Position src, Position dest, long long startTime, long long duration, int sequence);
+
+    Position getSource() const { return source; }
+    Position getDestination() const { return destination; }
+    long long getStartTime() const { return startTime; }
+    long long getDuration() const { return duration; }
+    int getSequence() const { return sequence; }
+    bool isFinished(long long currentTime) const;
+
 private:
-    int piece_id;
     Position source;
     Position destination;
-    float progress;
+    long long startTime;
+    long long duration;
+    int sequence;
 };

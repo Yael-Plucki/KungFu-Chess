@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+#include <stdexcept>
 #include <vector>
 #include "Piece.hpp"
 #include "Position.hpp"
@@ -9,6 +11,8 @@ private:
     std::vector<std::vector<Piece>> grid;
     int rows, cols;
 
+    void validate_no_duplicates() const;
+
 public:
     Board(const std::vector<std::vector<Piece>>& initial_grid);
 
@@ -16,7 +20,13 @@ public:
     int getCols() const;
 
     Piece at(int row, int col) const;
-    void setPiece(int row, int col, const Piece& piece);
-    
+    Piece at(const Position& pos) const;
+
+    void add_piece(const Piece& piece);
+    void remove_piece(const Position& pos);
+    void move_piece(const Position& from, const Position& to);
+    void update_piece(const Position& pos, const Piece& piece);
+
     bool isValidPosition(int row, int col) const;
+    bool isValidPosition(const Position& pos) const;
 };

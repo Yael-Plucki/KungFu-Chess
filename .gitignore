@@ -1,0 +1,25 @@
+# Build outputs
+*.obj
+*.o
+*.exe
+*.pdb
+*.ilk
+
+# Keep bundled OpenCV import libs in cpp/, but not large runtime DLLs
+cpp/OpenCV_451/bin/*.dll
+*.lib
+!/cpp/**/*.lib
+
+# Copied runtime dependency at repo root
+/opencv_world451.dll
+
+# Generated
+compile_commands.json
+.cache/
+
+# IDE
+.vs/
+.vscode/
+
+# Nested CTD26 repo metadata (assets are tracked as normal files)
+CTD26/.git/
