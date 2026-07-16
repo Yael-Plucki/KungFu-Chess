@@ -4,11 +4,11 @@
 
 static void test_snapshot_exposes_read_only_view_data() {
     BoardParser parser;
-    auto board = std::make_shared<Board>(parser.parseRows({
+    parser.parseRows({
         ". wK .",
         ". . ."
-    }));
-    GameEngine engine(board);
+    });
+    GameEngine engine;
 
     GameSnapshot snap = engine.snapshot(Position(0, 1));
     EXPECT_EQ(snap.board_width, 3);
@@ -18,18 +18,18 @@ static void test_snapshot_exposes_read_only_view_data() {
     EXPECT_FALSE(snap.game_over);
     EXPECT_EQ(snap.pieces.size(), 1u);
     EXPECT_EQ(snap.pieces[0].kind, Kind::King);
-    EXPECT_EQ(snap.pieces[0].pixel_x, 150);
-    EXPECT_EQ(snap.pieces[0].pixel_y, 50);
+    EXPECT_EQ(snap.pieces[0].cell, Position(0, 1));
+    EXPECT_FALSE(snap.pieces[0].motion.has_value());
 }
 
 static void test_snapshot_interpolates_active_motion() {
     BoardParser parser;
-    auto board = std::make_shared<Board>(parser.parseRows({
+    parser.parseRows({
         ". wR .",
         ". . .",
         ". . ."
-    }));
-    GameEngine engine(board);
+    });
+    GameEngine engine;
 
     engine.request_move(Position(0, 1), Position(2, 1));
     engine.wait(1000);
@@ -37,8 +37,9 @@ static void test_snapshot_interpolates_active_motion() {
     GameSnapshot snap = engine.snapshot();
     EXPECT_EQ(snap.pieces.size(), 1u);
     EXPECT_EQ(snap.pieces[0].state, State::Moving);
-    EXPECT_EQ(snap.pieces[0].pixel_x, 150);
-    EXPECT_EQ(snap.pieces[0].pixel_y, 150);
+    EXPECT_TRUE(snap.pieces[0].motion.has_value());
+    EXPECT_EQ(snap.pieces[0].motion.value().source, Position(0, 1));
+    EXPECT_EQ(snap.pieces[0].motion.value().destination, Position(2, 1));
 }
 
 int main() {

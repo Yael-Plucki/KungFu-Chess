@@ -36,6 +36,21 @@ void Controller::click(int x, int y) {
     selected_cell = std::nullopt;
 }
 
+void Controller::jump(int x, int y) {
+    std::optional<Position> cell = boardMapper.pixel_to_cell(x, y);
+    if (!cell.has_value()) {
+        return;
+    }
+
+    GameSnapshot snap = gameEngine.snapshot(selected_cell);
+    if (snap.is_empty(cell.value())) {
+        return;
+    }
+
+    gameEngine.jump(cell.value());
+    selected_cell = std::nullopt;
+}
+
 std::optional<Position> Controller::get_selected_cell() const {
     return selected_cell;
 }

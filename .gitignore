@@ -5,10 +5,10 @@
 *.pdb
 *.ilk
 
-# Keep bundled OpenCV import libs in cpp/, but not large runtime DLLs
-cpp/OpenCV_451/bin/*.dll
+# Keep bundled OpenCV import libs, but not large runtime DLLs
+OpenCV_451/bin/*.dll
 *.lib
-!/cpp/**/*.lib
+!/OpenCV_451/bin/*.lib
 
 # Copied runtime dependency at repo root
 /opencv_world451.dll

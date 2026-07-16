@@ -13,8 +13,7 @@ struct SnapshotPiece {
     Kind kind;
     State state;
     Position cell;
-    int pixel_x;
-    int pixel_y;
+    std::optional<ActiveMotionInfo> motion;
     bool is_jump_motion = false;
 };
 
@@ -26,6 +25,7 @@ struct GameSnapshot {
     std::vector<SnapshotPiece> pieces;
     std::optional<Position> selected_cell;
     bool game_over;
+    long long current_time = 0;
 
     bool is_empty(const Position& pos) const;
     std::optional<SnapshotPiece> piece_at(const Position& pos) const;
@@ -39,13 +39,6 @@ struct GameSnapshot {
     );
 
 private:
-    static void cell_center(const Position& pos, int& pixel_x, int& pixel_y);
-    static void motion_pixel(
-        const ActiveMotionInfo& motion,
-        long long current_time,
-        int& pixel_x,
-        int& pixel_y
-    );
     static const ActiveMotionInfo* find_motion_for_cell(
         const std::vector<ActiveMotionInfo>& motions,
         const Position& cell

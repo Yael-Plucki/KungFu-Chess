@@ -4,19 +4,19 @@
 
 static void test_move_piece_updates_board() {
     BoardParser parser;
-    Board board = parser.parseRows({
+    Board& board = parser.parseRows({
         ". wR .",
         ". . ."
     });
 
     board.move_piece(Position(0, 1), Position(1, 1));
-    EXPECT_EQ(board.at(0, 1).getKind(), Kind::Empty);
-    EXPECT_EQ(board.at(1, 1).getKind(), Kind::Rook);
+    EXPECT_EQ(board.at(Position(0, 1)).getKind(), Kind::Empty);
+    EXPECT_EQ(board.at(Position(1, 1)).getKind(), Kind::Rook);
 }
 
 static void test_add_piece_rejects_duplicate_occupancy() {
     BoardParser parser;
-    Board board = parser.parseRows({". wK ."});
+    Board& board = parser.parseRows({". wK ."});
 
     bool threw = false;
     try {

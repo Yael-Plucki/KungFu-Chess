@@ -4,7 +4,7 @@
 
 static void test_parses_rectangular_board() {
     BoardParser parser;
-    Board board = parser.parseRows({
+    Board& board = parser.parseRows({
         "wK . bR",
         ". . .",
         ". wN bK"
@@ -12,14 +12,14 @@ static void test_parses_rectangular_board() {
 
     EXPECT_EQ(board.getRows(), 3);
     EXPECT_EQ(board.getCols(), 3);
-    EXPECT_EQ(board.at(0, 0).getKind(), Kind::King);
-    EXPECT_EQ(board.at(0, 2).getKind(), Kind::Rook);
+    EXPECT_EQ(board.at(Position(0, 0)).getKind(), Kind::King);
+    EXPECT_EQ(board.at(Position(0, 2)).getKind(), Kind::Rook);
 }
 
 static void test_printer_round_trip() {
     BoardParser parser;
     BoardPrinter printer;
-    Board board = parser.parseRows({
+    Board& board = parser.parseRows({
         ". wR .",
         ". . .",
         ". . bK"

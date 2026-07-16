@@ -8,18 +8,21 @@
 namespace {
 constexpr const char* kWindowName = "KungFu Chess";
 constexpr int kFrameMs = 16;
-}
-
+}  // namespace
 Renderer::Renderer(GameEngine& engine, Controller& controller, std::string assets_root)
     : engine(engine), controller(controller), assets_root(std::move(assets_root)) {}
 
 void Renderer::on_mouse(int event, int x, int y, int /*flags*/, void* userdata) {
-    if (event != cv::EVENT_LBUTTONDOWN || userdata == nullptr) {
+    if (userdata == nullptr) {
         return;
     }
 
     auto* renderer = static_cast<Renderer*>(userdata);
-    renderer->controller.click(x, y);
+    if (event == cv::EVENT_LBUTTONDOWN) {
+        renderer->controller.click(x, y);
+    } else if (event == cv::EVENT_RBUTTONDOWN) {
+        renderer->controller.jump(x, y);
+    }
 }
 
 void Renderer::run() {

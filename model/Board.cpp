@@ -1,7 +1,12 @@
 #include "Board.hpp"
 
-Board::Board(const std::vector<std::vector<Piece>>& initial_grid)
-    : grid(initial_grid) {
+Board& Board::getInstance() {
+    static Board instance;
+    return instance;
+}
+
+void Board::initialize(const std::vector<std::vector<Piece>>& initial_grid) {
+    grid = initial_grid;
     rows = static_cast<int>(grid.size());
     cols = (rows > 0) ? static_cast<int>(grid[0].size()) : 0;
     validate_no_duplicates();
@@ -26,15 +31,15 @@ void Board::validate_no_duplicates() const {
 int Board::getRows() const { return rows; }
 int Board::getCols() const { return cols; }
 
-Piece Board::at(int row, int col) const {
-    if (!isValidPosition(row, col)) {
-        throw std::out_of_range("Board::at: position out of bounds");
-    }
-    return grid[row][col];
+bool Board::isValidPosition(const Position& pos) const {
+    return (pos.getRow() >= 0 && pos.getRow() < rows && pos.getCol() >= 0 && pos.getCol() < cols);
 }
 
 Piece Board::at(const Position& pos) const {
-    return at(pos.getRow(), pos.getCol());
+    if (!isValidPosition(pos)) {
+        throw std::out_of_range("Board::at: position out of bounds");
+    }
+    return grid[pos.getRow()][pos.getCol()];
 }
 
 void Board::add_piece(const Piece& piece) {
@@ -84,12 +89,4 @@ void Board::update_piece(const Position& pos, const Piece& piece) {
         throw std::out_of_range("Board::update_piece: position out of bounds");
     }
     grid[pos.getRow()][pos.getCol()] = piece;
-}
-
-bool Board::isValidPosition(int row, int col) const {
-    return (row >= 0 && row < rows && col >= 0 && col < cols);
-}
-
-bool Board::isValidPosition(const Position& pos) const {
-    return isValidPosition(pos.getRow(), pos.getCol());
 }

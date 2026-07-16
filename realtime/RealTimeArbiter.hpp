@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <set>
 #include <vector>
 #include "../model/ActiveMotionInfo.hpp"
@@ -16,7 +15,7 @@ struct ArrivalEvents {
 
 class RealTimeArbiter {
 public:
-    explicit RealTimeArbiter(std::shared_ptr<Board> board);
+    RealTimeArbiter();
 
     bool start_motion(Position src, Position dest);
     bool start_jump(const Position& cell);
@@ -26,7 +25,6 @@ public:
     std::vector<ActiveMotionInfo> active_motion_infos() const;
 
 private:
-    std::shared_ptr<Board> board;
     std::vector<Motion> active_motions;
     long long current_time = 0;
     int next_motion_sequence = 0;

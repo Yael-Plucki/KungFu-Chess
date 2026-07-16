@@ -23,7 +23,7 @@ void PieceAnimator::sync(const SnapshotPiece& piece) {
         if (last_game_state != State::Moving || motion_anim) {
             enter_state(piece.is_jump_motion ? "jump" : "move");
         }
-    } else if (last_game_state == State::Moving && piece.state == State::Idle) {
+    } else if (piece.state == State::Idle) {
         if (current_state_name == "move") {
             enter_state("long_rest");
         } else if (current_state_name == "jump") {
@@ -48,7 +48,10 @@ int PieceAnimator::current_frame(const AnimationConfig& config) const {
 }
 
 bool PieceAnimator::is_clip_finished(const AnimationConfig& config) const {
-    if (config.is_loop || config.frames_per_sec <= 0 || config.frame_count <= 0) {
+    const bool one_shot_rest =
+        current_state_name == "long_rest" || current_state_name == "short_rest";
+
+    if ((config.is_loop && !one_shot_rest) || config.frames_per_sec <= 0 || config.frame_count <= 0) {
         return false;
     }
 

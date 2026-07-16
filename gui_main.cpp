@@ -4,19 +4,23 @@
 #include "io/BoardParser.hpp"
 #include "view/Renderer.hpp"
 #include <iostream>
-#include <memory>
 
 int main() {
     try {
         BoardParser parser;
-        auto board = std::make_shared<Board>(parser.parseRows({
-            ". wR .",
-            ". . .",
-            ". . bK"
-        }));
+        parser.parseRows({
+            "bR bN bB bQ bK bB bN bR",
+            "bP bP bP bP bP bP bP bP",
+            ". . . . . . . .",
+            ". . . . . . . .",
+            ". . . . . . . .",
+            ". . . . . . . .",
+            "wP wP wP wP wP wP wP wP",
+            "wR wN wB wQ wK wB wN wR"
+        });
 
-        GameEngine engine(board);
-        BoardMapper mapper(board->getRows(), board->getCols());
+        GameEngine engine;
+        BoardMapper mapper(Board::getInstance().getRows(), Board::getInstance().getCols());
         Controller controller(engine, mapper);
         Renderer renderer(engine, controller);
         renderer.run();

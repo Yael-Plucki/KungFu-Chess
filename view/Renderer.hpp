@@ -7,7 +7,7 @@ class Controller;
 
 class Renderer {
 public:
-    Renderer(GameEngine& engine, Controller& controller, std::string assets_root = "CTD26/pieces2");
+    Renderer(GameEngine& engine, Controller& controller, std::string assets_root = "CTD26/assets (2)/assets/images/pieces");
 
     void run();
 

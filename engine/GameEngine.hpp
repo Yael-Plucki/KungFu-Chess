@@ -10,8 +10,6 @@
 
 #include "../realtime/RealTimeArbiter.hpp"
 
-#include <memory>
-
 #include <string>
 
 
@@ -30,8 +28,6 @@ class GameEngine {
 
 private:
 
-    std::shared_ptr<Board> board;
-
     RuleEngine ruleEngine;
 
     RealTimeArbiter arbiter;
@@ -42,7 +38,7 @@ private:
 
 public:
 
-    explicit GameEngine(std::shared_ptr<Board> b);
+    GameEngine();
 
 
 

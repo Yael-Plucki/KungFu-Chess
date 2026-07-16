@@ -1,39 +1,5 @@
 #include "GameSnapshot.hpp"
 #include "Board.hpp"
-#include "GameConstants.hpp"
-
-void GameSnapshot::cell_center(const Position& pos, int& pixel_x, int& pixel_y) {
-    pixel_x = pos.getCol() * GameConstants::CELL_SIZE + GameConstants::CELL_SIZE / 2;
-    pixel_y = pos.getRow() * GameConstants::CELL_SIZE + GameConstants::CELL_SIZE / 2;
-}
-
-void GameSnapshot::motion_pixel(
-    const ActiveMotionInfo& motion,
-    long long current_time,
-    int& pixel_x,
-    int& pixel_y
-) {
-    int src_x = 0;
-    int src_y = 0;
-    int dest_x = 0;
-    int dest_y = 0;
-    cell_center(motion.source, src_x, src_y);
-    cell_center(motion.destination, dest_x, dest_y);
-
-    if (motion.duration <= 0 || current_time >= motion.start_time + motion.duration) {
-        pixel_x = dest_x;
-        pixel_y = dest_y;
-        return;
-    }
-
-    double progress = (current_time - motion.start_time) / static_cast<double>(motion.duration);
-    if (progress < 0.0) {
-        progress = 0.0;
-    }
-
-    pixel_x = src_x + static_cast<int>((dest_x - src_x) * progress);
-    pixel_y = src_y + static_cast<int>((dest_y - src_y) * progress);
-}
 
 const ActiveMotionInfo* GameSnapshot::find_motion_for_cell(
     const std::vector<ActiveMotionInfo>& motions,
@@ -72,6 +38,7 @@ GameSnapshot GameSnapshot::create(
     snap.board_height = board.getRows();
     snap.selected_cell = selected_cell;
     snap.game_over = is_game_over;
+    snap.current_time = current_time;
 
     for (int row = 0; row < board.getRows(); ++row) {
         for (int col = 0; col < board.getCols(); ++col) {
@@ -81,16 +48,10 @@ GameSnapshot GameSnapshot::create(
                 continue;
             }
 
-            int pixel_x = 0;
-            int pixel_y = 0;
             State render_state = piece.getState();
-
             const ActiveMotionInfo* motion = find_motion_for_cell(motions, cell);
             if (motion != nullptr) {
-                motion_pixel(*motion, current_time, pixel_x, pixel_y);
                 render_state = State::Moving;
-            } else {
-                cell_center(cell, pixel_x, pixel_y);
             }
 
             const bool is_jump = motion != nullptr && motion->source == motion->destination;
@@ -101,8 +62,7 @@ GameSnapshot GameSnapshot::create(
                 piece.getKind(),
                 render_state,
                 cell,
-                pixel_x,
-                pixel_y,
+                motion != nullptr ? std::optional<ActiveMotionInfo>(*motion) : std::nullopt,
                 is_jump
             });
         }

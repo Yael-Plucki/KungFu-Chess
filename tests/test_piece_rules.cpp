@@ -2,13 +2,13 @@
 #include "../rules/PieceRules.hpp"
 #include "../io/BoardParser.hpp"
 
-static Board make_board(const std::vector<std::string>& rows) {
+static Board& make_board(const std::vector<std::string>& rows) {
     BoardParser parser;
     return parser.parseRows(rows);
 }
 
 static void test_pawn_forward_move() {
-    Board board = make_board({
+    Board& board = make_board({
         ". . .",
         ". wP .",
         ". . ."
@@ -19,7 +19,7 @@ static void test_pawn_forward_move() {
 }
 
 static void test_pawn_diagonal_capture_only() {
-    Board board = make_board({
+    Board& board = make_board({
         "bP . bP",
         ". wP .",
         ". . ."
@@ -30,7 +30,7 @@ static void test_pawn_diagonal_capture_only() {
 }
 
 static void test_pawn_cannot_capture_forward() {
-    Board board = make_board({
+    Board& board = make_board({
         ". bP .",
         ". wP .",
         ". . ."
@@ -40,7 +40,7 @@ static void test_pawn_cannot_capture_forward() {
 }
 
 static void test_pawn_double_step_from_start() {
-    Board white_board = make_board({
+    Board& white_board = make_board({
         ". . .",
         ". . .",
         ". wP ."
@@ -51,13 +51,13 @@ static void test_pawn_double_step_from_start() {
 }
 
 static void test_rook_legal_destinations() {
-    Board board = make_board({
+    Board& board = make_board({
         ". wR .",
         ". bP .",
         ". . ."
     });
 
-    std::set<Position> destinations = PieceRules::legal_destinations(board, board.at(0, 1));
+    std::set<Position> destinations = PieceRules::legal_destinations(board, board.at(Position(0, 1)));
     EXPECT_TRUE(destinations.count(Position(0, 0)) > 0);
     EXPECT_TRUE(destinations.count(Position(0, 2)) > 0);
     EXPECT_TRUE(destinations.count(Position(1, 1)) > 0);

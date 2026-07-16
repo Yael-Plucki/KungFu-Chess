@@ -54,7 +54,7 @@ Piece BoardParser::parseToken(const std::string& token, int row, int col) const 
 
 
 
-Board BoardParser::buildGrid(const std::vector<std::vector<Piece>>& grid) const {
+Board& BoardParser::buildGrid(const std::vector<std::vector<Piece>>& grid) const {
 
     if (grid.empty()) {
 
@@ -62,13 +62,14 @@ Board BoardParser::buildGrid(const std::vector<std::vector<Piece>>& grid) const 
 
     }
 
-    return Board(grid);
+    Board::getInstance().initialize(grid);
+    return Board::getInstance();
 
 }
 
 
 
-Board BoardParser::parseRows(const std::vector<std::string>& rows) const {
+Board& BoardParser::parseRows(const std::vector<std::string>& rows) const {
 
     std::vector<std::vector<Piece>> grid;
 
@@ -146,7 +147,7 @@ Board BoardParser::parseRows(const std::vector<std::string>& rows) const {
 
 
 
-Board BoardParser::parseBoard() const {
+Board& BoardParser::parseBoard() const {
 
     std::vector<std::string> rows;
 

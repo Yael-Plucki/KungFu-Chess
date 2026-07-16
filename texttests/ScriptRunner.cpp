@@ -6,7 +6,6 @@
 #include "../io/BoardPrinter.hpp"
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <sstream>
 
 namespace {
@@ -34,7 +33,6 @@ ScriptResult ScriptRunner::run(const std::vector<std::string>& lines, ScriptMode
     BoardParser parser;
     BoardPrinter printer;
 
-    std::shared_ptr<Board> board;
     std::unique_ptr<GameEngine> engine;
     std::unique_ptr<BoardMapper> mapper;
     std::unique_ptr<Controller> controller;
@@ -55,13 +53,16 @@ ScriptResult ScriptRunner::run(const std::vector<std::string>& lines, ScriptMode
             --i;
 
             try {
-                board = std::make_shared<Board>(parser.parseRows(board_rows));
+                parser.parseRows(board_rows);
             } catch (const std::exception& e) {
                 return {false, e.what()};
             }
 
-            engine = std::make_unique<GameEngine>(board);
-            mapper = std::make_unique<BoardMapper>(board->getRows(), board->getCols());
+            engine = std::make_unique<GameEngine>();
+            mapper = std::make_unique<BoardMapper>(
+                Board::getInstance().getRows(),
+                Board::getInstance().getCols()
+            );
             controller = std::make_unique<Controller>(*engine, *mapper);
             continue;
         }

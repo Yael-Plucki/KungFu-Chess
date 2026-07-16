@@ -1,14 +1,14 @@
 #include "GameEngine.hpp"
 
-GameEngine::GameEngine(std::shared_ptr<Board> b)
-    : board(b), arbiter(b), game_over(false) {}
+GameEngine::GameEngine()
+    : arbiter(), game_over(false) {}
 
 MoveResult GameEngine::request_move(const Position& src, const Position& dest) {
     if (game_over) {
         return {false, "game_over"};
     }
 
-    MoveValidation validation = ruleEngine.validate_move(*board, src, dest);
+    MoveValidation validation = ruleEngine.validate_move(Board::getInstance(), src, dest);
     if (!validation.is_valid) {
         return {false, validation.reason};
     }
@@ -41,7 +41,7 @@ bool GameEngine::is_game_over() const {
 
 GameSnapshot GameEngine::snapshot(std::optional<Position> selected_cell) const {
     return GameSnapshot::create(
-        *board,
+        Board::getInstance(),
         game_over,
         selected_cell,
         arbiter.active_motion_infos(),

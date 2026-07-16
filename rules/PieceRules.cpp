@@ -20,8 +20,8 @@ void collect_sliding_destinations(
     int row = from.getRow() + row_step;
     int col = from.getCol() + col_step;
 
-    while (board.isValidPosition(row, col)) {
-        Piece occupant = board.at(row, col);
+    while (board.isValidPosition(Position(row, col))) {
+        Piece occupant = board.at(Position(row, col));
         if (occupant.getKind() == Kind::Empty) {
             destinations.insert(Position(row, col));
         } else {
@@ -82,11 +82,11 @@ std::set<Position> KnightRule::legal_destinations(const Board& board, const Piec
     for (const auto& jump : jumps) {
         int row = from.getRow() + jump[0];
         int col = from.getCol() + jump[1];
-        if (!board.isValidPosition(row, col)) {
+        if (!board.isValidPosition(Position(row, col))) {
             continue;
         }
 
-        Piece occupant = board.at(row, col);
+        Piece occupant = board.at(Position(row, col));
         if (occupant.getKind() == Kind::Empty || occupant.getColor() != piece.getColor()) {
             destinations.insert(Position(row, col));
         }
@@ -104,11 +104,11 @@ std::set<Position> KingRule::legal_destinations(const Board& board, const Piece&
             if (row == from.getRow() && col == from.getCol()) {
                 continue;
             }
-            if (!board.isValidPosition(row, col)) {
+            if (!board.isValidPosition(Position(row, col))) {
                 continue;
             }
 
-            Piece occupant = board.at(row, col);
+            Piece occupant = board.at(Position(row, col));
             if (occupant.getKind() == Kind::Empty || occupant.getColor() != piece.getColor()) {
                 destinations.insert(Position(row, col));
             }
@@ -124,27 +124,27 @@ std::set<Position> PawnRule::legal_destinations(const Board& board, const Piece&
     int direction = (piece.getColor() == Color::White) ? -1 : 1;
     int target_row = from.getRow() + direction;
 
-    if (board.isValidPosition(target_row, from.getCol()) &&
-        board.at(target_row, from.getCol()).getKind() == Kind::Empty) {
+    if (board.isValidPosition(Position(target_row, from.getCol())) &&
+        board.at(Position(target_row, from.getCol())).getKind() == Kind::Empty) {
         destinations.insert(Position(target_row, from.getCol()));
     }
 
     int double_target_row = from.getRow() + 2 * direction;
     if (from.getRow() == pawnStartingRow(piece.getColor(), board.getRows()) &&
-        board.isValidPosition(double_target_row, from.getCol())) {
+        board.isValidPosition(Position(double_target_row, from.getCol()))) {
         int middle_row = from.getRow() + direction;
-        if (board.at(middle_row, from.getCol()).getKind() == Kind::Empty &&
-            board.at(double_target_row, from.getCol()).getKind() == Kind::Empty) {
+        if (board.at(Position(middle_row, from.getCol())).getKind() == Kind::Empty &&
+            board.at(Position(double_target_row, from.getCol())).getKind() == Kind::Empty) {
             destinations.insert(Position(double_target_row, from.getCol()));
         }
     }
 
     for (int col_offset : {-1, 1}) {
         int capture_col = from.getCol() + col_offset;
-        if (!board.isValidPosition(target_row, capture_col)) {
+        if (!board.isValidPosition(Position(target_row, capture_col))) {
             continue;
         }
-        Piece target = board.at(target_row, capture_col);
+        Piece target = board.at(Position(target_row, capture_col));
         if (target.getKind() != Kind::Empty && target.getColor() != piece.getColor()) {
             destinations.insert(Position(target_row, capture_col));
         }

@@ -2,8 +2,7 @@
 #include <algorithm>
 #include <cmath>
 
-RealTimeArbiter::RealTimeArbiter(std::shared_ptr<Board> board_ref)
-    : board(std::move(board_ref)) {}
+RealTimeArbiter::RealTimeArbiter() = default;
 
 bool RealTimeArbiter::has_motion_from(const Position& src) const {
     for (const Motion& motion : active_motions) {
@@ -15,17 +14,17 @@ bool RealTimeArbiter::has_motion_from(const Position& src) const {
 }
 
 bool RealTimeArbiter::start_motion(Position src, Position dest) {
-    if (!board->isValidPosition(src) || !board->isValidPosition(dest) || has_motion_from(src)) {
+    if (!Board::getInstance().isValidPosition(src) || !Board::getInstance().isValidPosition(dest) || has_motion_from(src)) {
         return false;
     }
 
-    Piece piece = board->at(src);
+    Piece piece = Board::getInstance().at(src);
     if (piece.getKind() == Kind::Empty || piece.getState() == State::Moving) {
         return false;
     }
 
     piece.setState(State::Moving);
-    board->update_piece(src, piece);
+    Board::getInstance().update_piece(src, piece);
 
     int distance = std::max(
         std::abs(dest.getRow() - src.getRow()),
@@ -37,17 +36,17 @@ bool RealTimeArbiter::start_motion(Position src, Position dest) {
 }
 
 bool RealTimeArbiter::start_jump(const Position& cell) {
-    if (!board->isValidPosition(cell) || has_motion_from(cell)) {
+    if (!Board::getInstance().isValidPosition(cell) || has_motion_from(cell)) {
         return false;
     }
 
-    Piece piece = board->at(cell);
+    Piece piece = Board::getInstance().at(cell);
     if (piece.getKind() == Kind::Empty || piece.getState() == State::Moving) {
         return false;
     }
 
     piece.setState(State::Moving);
-    board->update_piece(cell, piece);
+    Board::getInstance().update_piece(cell, piece);
     active_motions.emplace_back(cell, cell, current_time, GameConstants::MS_PER_CELL, next_motion_sequence++);
     return true;
 }
@@ -76,20 +75,20 @@ bool RealTimeArbiter::resolve_arrival(
     Position dest = motion.getDestination();
 
     if (src == dest) {
-        Piece piece = board->at(src);
+        Piece piece = Board::getInstance().at(src);
         if (piece.getKind() != Kind::Empty && piece.getState() == State::Moving) {
             piece.setState(State::Idle);
-            board->update_piece(src, piece);
+            Board::getInstance().update_piece(src, piece);
         }
         return false;
     }
 
-    Piece moving = board->at(src);
+    Piece moving = Board::getInstance().at(src);
     if (moving.getKind() == Kind::Empty) {
         return false;
     }
 
-    Piece target = board->at(dest);
+    Piece target = Board::getInstance().at(dest);
 
     if (target.getKind() != Kind::Empty &&
         target.getState() == State::Moving &&
@@ -100,7 +99,7 @@ bool RealTimeArbiter::resolve_arrival(
             if (motion.getStartTime() > opposing->getStartTime() ||
                 (motion.getStartTime() == opposing->getStartTime() &&
                  motion.getSequence() > opposing->getSequence())) {
-                board->remove_piece(src);
+                Board::getInstance().remove_piece(src);
                 return false;
             }
 
@@ -108,31 +107,31 @@ bool RealTimeArbiter::resolve_arrival(
         } else {
             Piece defender = target;
             defender.setState(State::Idle);
-            board->update_piece(dest, defender);
-            board->remove_piece(src);
+            Board::getInstance().update_piece(dest, defender);
+            Board::getInstance().remove_piece(src);
             return false;
         }
     }
 
     bool king_captured = (target.getKind() == Kind::King);
 
-    board->remove_piece(src);
+    Board::getInstance().remove_piece(src);
 
     Piece arrived = moving;
     arrived.setPosition(dest);
     arrived.setState(State::Idle);
 
     if (arrived.getKind() == Kind::Pawn) {
-        int promotion_row = (arrived.getColor() == Color::White) ? 0 : board->getRows() - 1;
+        int promotion_row = (arrived.getColor() == Color::White) ? 0 : Board::getInstance().getRows() - 1;
         if (dest.getRow() == promotion_row) {
             arrived.setKind(Kind::Queen);
         }
     }
 
     if (target.getKind() != Kind::Empty) {
-        board->remove_piece(dest);
+        Board::getInstance().remove_piece(dest);
     }
-    board->add_piece(arrived);
+    Board::getInstance().add_piece(arrived);
 
     return king_captured;
 }

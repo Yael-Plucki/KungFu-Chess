@@ -22,7 +22,7 @@ static void test_move_transitions_to_long_rest_when_motion_ends() {
 }
 
 static void test_long_rest_returns_to_idle_after_clip() {
-    AnimationConfigRegistry configs("CTD26/pieces2");
+    AnimationConfigRegistry configs("CTD26/assets (2)/assets/images/pieces");
     PieceAnimator animator(1, "KW");
 
     SnapshotPiece moving{};

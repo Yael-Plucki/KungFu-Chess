@@ -62,7 +62,7 @@ std::vector<std::string> BoardPrinter::format(const Board& board) const {
     for (int row = 0; row < board.getRows(); ++row) {
         std::ostringstream line;
         for (int col = 0; col < board.getCols(); ++col) {
-            line << format_piece_token(board.at(row, col));
+            line << format_piece_token(board.at(Position(row, col)));
             if (col + 1 < board.getCols()) {
                 line << " ";
             }

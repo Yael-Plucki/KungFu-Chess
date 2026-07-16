@@ -2,14 +2,14 @@
 #include "../rules/RuleEngine.hpp"
 #include "../io/BoardParser.hpp"
 
-static Board make_board(const std::vector<std::string>& rows) {
+static Board& make_board(const std::vector<std::string>& rows) {
     BoardParser parser;
     return parser.parseRows(rows);
 }
 
 static void test_rule_engine_reasons() {
     RuleEngine engine;
-    Board board = make_board({
+    Board& board = make_board({
         ". wR .",
         ". . .",
         ". . ."
