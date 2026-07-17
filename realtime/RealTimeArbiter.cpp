@@ -24,14 +24,13 @@ bool RealTimeArbiter::start_motion(Position src, Position dest) {
     }
 
     piece.setState(State::Moving);
-    Board::getInstance().update_piece(src, piece);
-
     int distance = std::max(
         std::abs(dest.getRow() - src.getRow()),
         std::abs(dest.getCol() - src.getCol())
     );
     long long duration = static_cast<long long>(distance) * GameConstants::MS_PER_CELL;
-    active_motions.emplace_back(src, dest, current_time, duration, next_motion_sequence++);
+    active_motions.emplace_back(src, dest, current_time, duration, next_motion_sequence++, piece);
+    Board::getInstance().remove_piece(src);
     return true;
 }
 
@@ -47,30 +46,11 @@ bool RealTimeArbiter::start_jump(const Position& cell) {
 
     piece.setState(State::Moving);
     Board::getInstance().update_piece(cell, piece);
-    active_motions.emplace_back(cell, cell, current_time, GameConstants::MS_PER_CELL, next_motion_sequence++);
+    active_motions.emplace_back(cell, cell, current_time, GameConstants::MS_PER_CELL, next_motion_sequence++, piece);
     return true;
 }
 
-const Motion* RealTimeArbiter::find_opposing_motion(
-    const Position& from,
-    const Position& to,
-    const std::vector<Motion>& motions
-) {
-    for (const Motion& motion : motions) {
-        if (motion.getSource() == from &&
-            motion.getDestination() == to &&
-            from != to) {
-            return &motion;
-        }
-    }
-    return nullptr;
-}
-
-bool RealTimeArbiter::resolve_arrival(
-    const Motion& motion,
-    const std::vector<Motion>& finished,
-    std::set<Position>& cancelled_sources
-) {
+bool RealTimeArbiter::resolve_arrival(const Motion& motion) {
     Position src = motion.getSource();
     Position dest = motion.getDestination();
 
@@ -83,39 +63,17 @@ bool RealTimeArbiter::resolve_arrival(
         return false;
     }
 
-    Piece moving = Board::getInstance().at(src);
-    if (moving.getKind() == Kind::Empty) {
-        return false;
-    }
-
+    Piece moving = motion.getPiece();
     Piece target = Board::getInstance().at(dest);
 
+    // Only in-place jumps keep the defender on the destination while Moving.
     if (target.getKind() != Kind::Empty &&
         target.getState() == State::Moving &&
         target.getColor() != moving.getColor()) {
-        const Motion* opposing = find_opposing_motion(dest, src, finished);
-
-        if (opposing != nullptr) {
-            if (motion.getStartTime() > opposing->getStartTime() ||
-                (motion.getStartTime() == opposing->getStartTime() &&
-                 motion.getSequence() > opposing->getSequence())) {
-                Board::getInstance().remove_piece(src);
-                return false;
-            }
-
-            cancelled_sources.insert(opposing->getSource());
-        } else {
-            Piece defender = target;
-            defender.setState(State::Idle);
-            Board::getInstance().update_piece(dest, defender);
-            Board::getInstance().remove_piece(src);
-            return false;
-        }
+        return moving.getKind() == Kind::King;
     }
 
     bool king_captured = (target.getKind() == Kind::King);
-
-    Board::getInstance().remove_piece(src);
 
     Piece arrived = moving;
     arrived.setPosition(dest);
@@ -158,21 +116,15 @@ ArrivalEvents RealTimeArbiter::advance_time(int ms) {
         return a.getSequence() < b.getSequence();
     });
 
-    std::set<Position> cancelled_sources;
-
     auto resolve_finished = [&](bool in_place) {
         for (const Motion& motion : finished) {
-            if (cancelled_sources.count(motion.getSource()) > 0) {
-                continue;
-            }
-
             bool motion_in_place = motion.getSource() == motion.getDestination();
             if (motion_in_place != in_place) {
                 continue;
             }
 
             events.arrived = true;
-            if (resolve_arrival(motion, finished, cancelled_sources)) {
+            if (resolve_arrival(motion)) {
                 events.king_captured = true;
             }
         }
@@ -197,12 +149,16 @@ std::vector<ActiveMotionInfo> RealTimeArbiter::active_motion_infos() const {
     infos.reserve(active_motions.size());
 
     for (const Motion& motion : active_motions) {
+        const Piece& piece = motion.getPiece();
         infos.push_back(ActiveMotionInfo{
             true,
             motion.getSource(),
             motion.getDestination(),
             motion.getStartTime(),
-            motion.getDuration()
+            motion.getDuration(),
+            piece.getId(),
+            piece.getColor(),
+            piece.getKind()
         });
     }
 

@@ -1,6 +1,7 @@
 #include "RuleEngine.hpp"
 #include "PieceRules.hpp"
 
+//all supposed to get snapshot?
 MoveValidation RuleEngine::validate_move(const Board& board, const Position& src, const Position& dest) const {
     if (!board.isValidPosition(src) || !board.isValidPosition(dest)) {
         return {false, "outside_board"};

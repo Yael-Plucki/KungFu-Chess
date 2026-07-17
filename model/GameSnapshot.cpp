@@ -68,5 +68,27 @@ GameSnapshot GameSnapshot::create(
         }
     }
 
+    for (const ActiveMotionInfo& motion : motions) {
+        if (!motion.active) {
+            continue;
+        }
+
+        Position cell = motion.source;
+        if (board.at(cell).getKind() != Kind::Empty) {
+            continue;
+        }
+
+        const bool is_jump = motion.source == motion.destination;
+        snap.pieces.push_back(SnapshotPiece{
+            motion.piece_id,
+            motion.color,
+            motion.kind,
+            State::Moving,
+            cell,
+            motion,
+            is_jump
+        });
+    }
+
     return snap;
 }

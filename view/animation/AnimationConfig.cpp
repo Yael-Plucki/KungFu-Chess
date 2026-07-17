@@ -101,16 +101,27 @@ AnimationConfig AnimationConfigRegistry::load_config(
     const std::filesystem::path state_dir =
         std::filesystem::path(assets_root) / piece_code_value / "states" / state;
     const std::filesystem::path config_path = state_dir / "config.json";
-    const std::string json = read_file(config_path);
 
     AnimationConfig config;
     config.name = state;
-    config.frames_per_sec = read_json_int(json, "frames_per_sec", 6);
-    config.is_loop = read_json_bool(json, "is_loop", true);
-    config.next_state = read_json_string(json, "next_state_when_finished");
-    if (config.next_state.empty()) {
-        config.next_state = "idle";
+    config.next_state = "idle";
+
+    if (std::filesystem::exists(config_path)) {
+        const std::string json = read_file(config_path);
+        config.frames_per_sec = read_json_int(json, "frames_per_sec", 6);
+        config.is_loop = read_json_bool(json, "is_loop", true);
+        config.next_state = read_json_string(json, "next_state_when_finished");
+        if (config.next_state.empty()) {
+            config.next_state = "idle";
+        }
+    } else {
+        config.frames_per_sec = 6;
+        config.is_loop = state == "idle";
+        if (state == "long_rest" || state == "short_rest") {
+            config.is_loop = false;
+        }
     }
+
     config.frame_count = count_sprite_frames(state_dir / "sprites");
     return config;
 }

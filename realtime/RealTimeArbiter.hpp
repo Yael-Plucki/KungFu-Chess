@@ -1,6 +1,5 @@
 #pragma once
 
-#include <set>
 #include <vector>
 #include "../model/ActiveMotionInfo.hpp"
 #include "../model/Board.hpp"
@@ -30,14 +29,5 @@ private:
     int next_motion_sequence = 0;
 
     bool has_motion_from(const Position& src) const;
-    static const Motion* find_opposing_motion(
-        const Position& from,
-        const Position& to,
-        const std::vector<Motion>& motions
-    );
-    bool resolve_arrival(
-        const Motion& motion,
-        const std::vector<Motion>& finished,
-        std::set<Position>& cancelled_sources
-    );
+    bool resolve_arrival(const Motion& motion);
 };
