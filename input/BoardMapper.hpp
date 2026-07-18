@@ -12,7 +12,6 @@ private:
 public:
     BoardMapper(int rows, int cols);
     std::optional<Position> pixel_to_cell(int x, int y) const;
-    int cell_to_pixel(int logical) const;
     int display_width() const;
     int display_height() const;
     int cell_display_size() const;

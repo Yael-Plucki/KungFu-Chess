@@ -5,8 +5,8 @@ BoardMapper::BoardMapper(int boardRows, int boardCols)
     : rows(boardRows), cols(boardCols) {}
 
 std::optional<Position> BoardMapper::pixel_to_cell(int x, int y) const {
-    int row = y / GameConstants::DISPLAY_CELL_SIZE;
-    int col = x / GameConstants::DISPLAY_CELL_SIZE;
+    int row = y / GameConstants::CELL_SIZE;
+    int col = x / GameConstants::CELL_SIZE;
 
     if (row >= 0 && row < rows && col >= 0 && col < cols) {
         return Position(row, col);
@@ -15,25 +15,21 @@ std::optional<Position> BoardMapper::pixel_to_cell(int x, int y) const {
     return std::nullopt;
 }
 
-int BoardMapper::cell_to_pixel(int logical) const {
-    return logical * GameConstants::DISPLAY_CELL_SIZE / GameConstants::CELL_SIZE;
-}
-
 int BoardMapper::display_width() const {
-    return cols * GameConstants::DISPLAY_CELL_SIZE;
+    return cols * GameConstants::CELL_SIZE;
 }
 
 int BoardMapper::display_height() const {
-    return rows * GameConstants::DISPLAY_CELL_SIZE;
+    return rows * GameConstants::CELL_SIZE;
 }
 
 int BoardMapper::cell_display_size() const {
-    return GameConstants::DISPLAY_CELL_SIZE;
+    return GameConstants::CELL_SIZE;
 }
 
 void BoardMapper::cell_origin(const Position& cell, int& x, int& y) const {
-    x = cell.getCol() * GameConstants::DISPLAY_CELL_SIZE;
-    y = cell.getRow() * GameConstants::DISPLAY_CELL_SIZE;
+    x = cell.getCol() * GameConstants::CELL_SIZE;
+    y = cell.getRow() * GameConstants::CELL_SIZE;
 }
 
 void BoardMapper::cell_center(const Position& cell, int& x, int& y) const {

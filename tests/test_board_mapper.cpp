@@ -40,8 +40,8 @@ static void test_cell_center() {
     int x = 0;
     int y = 0;
     mapper.cell_center(Position(0, 1), x, y);
-    EXPECT_EQ(x, 150);
-    EXPECT_EQ(y, 50);
+    EXPECT_EQ(x, 90);
+    EXPECT_EQ(y, 30);
 }
 
 static void test_motion_center_interpolates() {
@@ -57,8 +57,8 @@ static void test_motion_center_interpolates() {
     int x = 0;
     int y = 0;
     mapper.motion_center(motion, 1000, x, y);
-    EXPECT_EQ(x, 150);
-    EXPECT_EQ(y, 150);
+    EXPECT_EQ(x, 90);
+    EXPECT_EQ(y, 90);
 }
 
 int main() {

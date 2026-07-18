@@ -100,25 +100,25 @@ void ImageView::draw_piece(
     const BoardMapper& mapper,
     long long current_time
 ) {
-    int logical_x = 0;
-    int logical_y = 0;
+    int center_x = 0;
+    int center_y = 0;
     if (piece.motion.has_value()) {
-        mapper.motion_center(piece.motion.value(), current_time, logical_x, logical_y);
+        mapper.motion_center(piece.motion.value(), current_time, center_x, center_y);
     } else {
-        mapper.cell_center(piece.cell, logical_x, logical_y);
+        mapper.cell_center(piece.cell, center_x, center_y);
     }
 
     try {
         Img& sprite = load_sprite(sprite_file, mapper);
         const cv::Mat& sprite_mat = sprite.get_mat();
-        const int draw_x = mapper.cell_to_pixel(logical_x) - sprite_mat.cols / 2;
-        const int draw_y = mapper.cell_to_pixel(logical_y) - sprite_mat.rows / 2;
+        const int draw_x = center_x - sprite_mat.cols / 2;
+        const int draw_y = center_y - sprite_mat.rows / 2;
 
         sprite.draw_on(canvas, draw_x, draw_y);
     } catch (const std::exception&) {
         cv::circle(
             canvas.mat(),
-            cv::Point(mapper.cell_to_pixel(logical_x), mapper.cell_to_pixel(logical_y)),
+            cv::Point(center_x, center_y),
             mapper.cell_display_size() / 4,
             piece.color == Color::White ? cv::Scalar(240, 240, 240) : cv::Scalar(30, 30, 30),
             cv::FILLED
