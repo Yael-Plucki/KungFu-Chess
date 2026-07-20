@@ -1,0 +1,416 @@
+#include "HomeScreen.hpp"
+
+
+
+#include "../network/RemoteGameSession.hpp"
+
+#include <chrono>
+
+#include <iostream>
+
+#include <string>
+
+#include <thread>
+
+
+
+namespace {
+
+
+
+std::string trim(const std::string& line) {
+
+    const auto start = line.find_first_not_of(" \t\r\n");
+
+    if (start == std::string::npos) {
+
+        return "";
+
+    }
+
+    const auto end = line.find_last_not_of(" \t\r\n");
+
+    return line.substr(start, end - start + 1);
+
+}
+
+
+
+bool read_line(std::istream& in, std::ostream& out, const std::string& prompt, std::string& line) {
+
+    out << prompt;
+
+    out.flush();
+
+    if (!std::getline(in, line)) {
+
+        return false;
+
+    }
+
+    line = trim(line);
+
+    return true;
+
+}
+
+
+
+AuthMode parse_auth_mode(const std::string& choice) {
+
+    if (choice == "2") {
+
+        return AuthMode::Register;
+
+    }
+
+    return AuthMode::Login;
+
+}
+
+
+
+}  // namespace
+
+
+
+void HomeScreen::render(std::ostream& out) {
+
+    out << "\n";
+
+    out << "========================================\n";
+
+    out << "           KUNG FU CHESS\n";
+
+    out << "========================================\n";
+
+    out << "Real-time chess. Move fast. Think faster.\n";
+
+    out << "Starting rating: 1200 ELO\n";
+
+    out << "========================================\n\n";
+
+}
+
+
+
+LoginResult HomeScreen::prompt_auth(std::istream& in, std::ostream& out) {
+
+    render(out);
+
+    out << "Account\n";
+
+    out << "-------\n";
+
+    out << "1) Login\n";
+
+    out << "2) Create account\n";
+
+
+
+    LoginResult result;
+
+    std::string choice;
+
+    if (!read_line(in, out, "\nChoice: ", choice)) {
+
+        result.error = "Login cancelled.";
+
+        return result;
+
+    }
+
+
+
+    result.mode = parse_auth_mode(choice);
+
+
+
+    while (true) {
+
+        if (!read_line(in, out, "Username: ", result.username)) {
+
+            result.error = "Login cancelled.";
+
+            return result;
+
+        }
+
+        if (!result.username.empty()) {
+
+            break;
+
+        }
+
+        out << "Please enter a username.\n";
+
+    }
+
+
+
+    while (true) {
+
+        if (!read_line(in, out, "Password: ", result.password)) {
+
+            result.error = "Login cancelled.";
+
+            return result;
+
+        }
+
+        if (!result.password.empty()) {
+
+            break;
+
+        }
+
+        out << "Please enter a password.\n";
+
+    }
+
+
+
+    result.success = true;
+
+    out << "\nWelcome, " << result.username << "!\n\n";
+
+    return result;
+
+}
+
+
+
+HomeMenuChoice HomeScreen::show_menu(std::istream& in, std::ostream& out, const std::string& username) {
+
+    out << "Main Menu\n";
+
+    out << "---------\n";
+
+    out << "Signed in as: " << username << "\n";
+
+    out << "1) Play (text script mode)\n";
+
+    out << "2) Exit\n";
+
+
+
+    while (true) {
+
+        std::string choice;
+
+        if (!read_line(in, out, "\nChoice: ", choice)) {
+
+            return HomeMenuChoice::Exit;
+
+        }
+
+
+
+        if (choice == "1") {
+
+            out << "\nEnter board setup and commands. End input with Ctrl+Z (Windows) or Ctrl+D (Unix).\n\n";
+
+            return HomeMenuChoice::Play;
+
+        }
+
+        if (choice == "2") {
+
+            out << "Goodbye, " << username << "!\n";
+
+            return HomeMenuChoice::Exit;
+
+        }
+
+
+
+        out << "Invalid choice. Enter 1 or 2.\n";
+
+    }
+
+}
+
+
+
+namespace {
+
+
+
+void print_lobby_status(const RemoteGameSession& session, std::ostream& out, const std::string& username) {
+
+    const LobbyStateMessage& lobby = session.lobby_state();
+
+    out << "\nLogged in as " << username << " (Rating: " << session.player_rating() << ")\n";
+
+    out << "Players joined: " << lobby.players_joined << " / 2\n";
+
+
+
+    out << "White: ";
+
+    if (lobby.white_username.has_value()) {
+
+        out << *lobby.white_username;
+
+        if (lobby.white_rating.has_value()) {
+
+            out << " [" << *lobby.white_rating << "]";
+
+        }
+
+    } else {
+
+        out << "(waiting)";
+
+    }
+
+    out << "\n";
+
+
+
+    out << "Black: ";
+
+    if (lobby.black_username.has_value()) {
+
+        out << *lobby.black_username;
+
+        if (lobby.black_rating.has_value()) {
+
+            out << " [" << *lobby.black_rating << "]";
+
+        }
+
+    } else {
+
+        out << "(waiting)";
+
+    }
+
+    out << "\n";
+
+}
+
+
+
+}  // namespace
+
+
+
+bool HomeScreen::wait_for_auth(RemoteGameSession& session, std::ostream& out, const LoginResult& /*login*/) {
+
+    out << "Authenticating...\n";
+
+
+
+    while (!session.auth_completed()) {
+
+        session.process_messages();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    }
+
+
+
+    if (!session.auth_succeeded()) {
+
+        out << "Authentication failed: " << session.auth_error() << "\n";
+
+        return false;
+
+    }
+
+
+
+    out << "Authenticated. Rating: " << session.player_rating() << "\n";
+
+    return true;
+
+}
+
+
+
+bool HomeScreen::wait_for_match(RemoteGameSession& session, std::ostream& out, const std::string& username) {
+
+    out << "Waiting for opponent...\n";
+
+
+
+    int last_players_joined = -1;
+
+    while (!session.game_started()) {
+
+        session.process_messages();
+
+
+
+        const LobbyStateMessage& lobby = session.lobby_state();
+
+        if (lobby.players_joined != last_players_joined) {
+
+            print_lobby_status(session, out, username);
+
+            last_players_joined = lobby.players_joined;
+
+        }
+
+
+
+        if (session.game_started()) {
+
+            break;
+
+        }
+
+
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    }
+
+
+
+    while (!session.has_snapshot()) {
+
+        session.process_messages();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
+    }
+
+
+
+    const LobbyStateMessage& lobby = session.lobby_state();
+
+    out << "\nGame starting!\n";
+
+    if (lobby.white_username.has_value() && lobby.black_username.has_value()) {
+
+        out << "White: " << *lobby.white_username;
+
+        if (lobby.white_rating.has_value()) {
+
+            out << " [" << *lobby.white_rating << "]";
+
+        }
+
+        out << "\n";
+
+        out << "Black: " << *lobby.black_username;
+
+        if (lobby.black_rating.has_value()) {
+
+            out << " [" << *lobby.black_rating << "]";
+
+        }
+
+        out << "\n";
+
+    }
+
+    out << "Opening board...\n";
+
+    return true;
+
+}
+

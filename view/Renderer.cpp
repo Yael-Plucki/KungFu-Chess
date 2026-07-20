@@ -1,16 +1,19 @@
 #include "Renderer.hpp"
 #include "ImageView.hpp"
 #include "animation/AnimatorRegistry.hpp"
-#include "../engine/GameEngine.hpp"
-#include "../input/Controller.hpp"
+#include "../input/RemoteController.hpp"
+#include "../network/RemoteGameSession.hpp"
+#include <chrono>
 #include <opencv2/opencv.hpp>
+#include <thread>
 
 namespace {
 constexpr const char* kWindowName = "KungFu Chess";
 constexpr int kFrameMs = 16;
 }  // namespace
-Renderer::Renderer(GameEngine& engine, Controller& controller, std::string assets_root)
-    : engine(engine), controller(controller), assets_root(std::move(assets_root)) {}
+
+Renderer::Renderer(RemoteGameSession& session, RemoteController& controller, std::string assets_root)
+    : session(session), controller(controller), assets_root(std::move(assets_root)) {}
 
 void Renderer::on_mouse(int event, int x, int y, int /*flags*/, void* userdata) {
     if (userdata == nullptr) {
@@ -32,14 +35,14 @@ void Renderer::run() {
     cv::setMouseCallback(kWindowName, on_mouse, this);
 
     while (true) {
-        engine.wait(kFrameMs);
-        const GameSnapshot snapshot = engine.snapshot(controller.get_selected_cell());
+        session.process_messages();
+        const GameSnapshot snapshot = session.snapshot_with_selection(controller.get_selected_cell());
         animators.sync(snapshot);
         animators.update(kFrameMs);
         view.render(snapshot, animators);
         cv::imshow(kWindowName, view.frame());
 
-        const int key = cv::waitKey(1);
+        const int key = cv::waitKey(kFrameMs);
         if (key == 27 || key == 'q' || key == 'Q') {
             break;
         }

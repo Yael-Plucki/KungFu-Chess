@@ -192,7 +192,9 @@ void draw_color_panel(
     int panel_width,
     int panel_height,
     Color color,
-    const ColorSideStats& stats
+    const ColorSideStats& stats,
+    const std::string& player_name,
+    int player_rating
 ) {
     const cv::Scalar panel_bg = color == Color::White ? cv::Scalar(235, 235, 235) : cv::Scalar(45, 45, 45);
     const cv::Scalar title_color = color == Color::White ? cv::Scalar(20, 20, 20) : cv::Scalar(230, 230, 230);
@@ -207,9 +209,16 @@ void draw_color_panel(
     );
 
     int y = 24;
-    const std::string title = color == Color::White ? "White" : "Black";
+    const std::string side_label = color == Color::White ? "White" : "Black";
+    const std::string title = player_name.empty() ? side_label : player_name;
     draw_panel_text(canvas, panel_x + 10, y, title, title_color, 0.6);
-    y += 26;
+    y += 22;
+    if (!player_name.empty()) {
+        draw_panel_text(canvas, panel_x + 10, y, side_label, text_color, 0.45);
+        y += 20;
+    }
+    draw_panel_text(canvas, panel_x + 10, y, "Rating: " + std::to_string(player_rating), title_color, 0.5);
+    y += 24;
     draw_panel_text(canvas, panel_x + 10, y, "Score: " + std::to_string(stats.score), title_color, 0.5);
     y += 28;
     draw_panel_text(canvas, panel_x + 10, y, "Moves:", title_color, 0.5);
@@ -262,14 +271,17 @@ void ImageView::draw_side_panels(const GameSnapshot& snapshot, const BoardMapper
     const int panel_width = GameConstants::SIDE_PANEL_WIDTH;
     const int panel_height = mapper.display_height();
 
-    draw_color_panel(frame, 0, panel_width, panel_height, Color::White, snapshot.stats.white);
+    draw_color_panel(frame, 0, panel_width, panel_height, Color::White, snapshot.stats.white,
+        snapshot.white_player_name, snapshot.white_player_rating);
     draw_color_panel(
         frame,
         mapper.board_offset_x() + snapshot.board_width * mapper.cell_display_size(),
         panel_width,
         panel_height,
         Color::Black,
-        snapshot.stats.black
+        snapshot.stats.black,
+        snapshot.black_player_name,
+        snapshot.black_player_rating
     );
 }
 

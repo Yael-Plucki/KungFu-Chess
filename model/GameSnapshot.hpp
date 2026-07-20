@@ -28,6 +28,10 @@ struct GameSnapshot {
     bool game_over;
     long long current_time = 0;
     GameStats stats;
+    std::string white_player_name;
+    std::string black_player_name;
+    int white_player_rating = 1200;
+    int black_player_rating = 1200;
 
     bool is_empty(const Position& pos) const;
     std::optional<SnapshotPiece> piece_at(const Position& pos) const;

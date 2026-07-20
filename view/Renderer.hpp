@@ -2,18 +2,22 @@
 
 #include <string>
 
-class GameEngine;
-class Controller;
+class RemoteController;
+class RemoteGameSession;
 
 class Renderer {
 public:
-    Renderer(GameEngine& engine, Controller& controller, std::string assets_root = "CTD26/assets (2)/assets/images/pieces");
+    Renderer(
+        RemoteGameSession& session,
+        RemoteController& controller,
+        std::string assets_root = "CTD26/assets (2)/assets/images/pieces"
+    );
 
     void run();
 
 private:
-    GameEngine& engine;
-    Controller& controller;
+    RemoteGameSession& session;
+    RemoteController& controller;
     std::string assets_root;
 
     static void on_mouse(int event, int x, int y, int flags, void* userdata);
