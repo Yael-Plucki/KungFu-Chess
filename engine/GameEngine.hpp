@@ -1,17 +1,11 @@
 #pragma once
 
-
-
+#include "../core/EventBus.hpp"
 #include "../model/Board.hpp"
-
 #include "../model/GameSnapshot.hpp"
-
 #include "../model/GameStats.hpp"
-
 #include "../rules/RuleEngine.hpp"
-
 #include "../realtime/RealTimeArbiter.hpp"
-
 #include <string>
 
 
@@ -34,6 +28,8 @@ private:
 
     RealTimeArbiter arbiter;
 
+    EventBus eventBus;
+
     bool game_over;
 
     GameStats stats;
@@ -44,7 +40,7 @@ public:
 
     GameEngine();
 
-
+    EventBus& event_bus();
 
     MoveResult request_move(const Position& src, const Position& dest);
 

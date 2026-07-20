@@ -94,6 +94,7 @@ kungfu_add_test(test_board_parser tests/test_board_parser.cpp
 kungfu_add_test(test_script_runner tests/test_script_runner.cpp
     ${CORE_SRCS} ${TEXTTEST_SRCS})
 kungfu_add_test(test_game_engine tests/test_game_engine.cpp ${CORE_SRCS})
+kungfu_add_test(test_event_bus tests/test_event_bus.cpp ${CORE_SRCS})
 kungfu_add_test(test_board tests/test_board.cpp ${MODEL_SRCS} ${IO_SRCS})
 kungfu_add_test(test_rule_engine tests/test_rule_engine.cpp
     ${MODEL_SRCS} ${RULES_SRCS} ${IO_SRCS})

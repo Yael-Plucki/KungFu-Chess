@@ -1,22 +1,34 @@
 #include "GameEngine.hpp"
+#include "../core/GameEvents.hpp"
 
 GameEngine::GameEngine()
     : arbiter(), game_over(false) {}
 
+EventBus& GameEngine::event_bus() {
+    return eventBus;
+}
+
 MoveResult GameEngine::request_move(const Position& src, const Position& dest) {
     if (game_over) {
-        return {false, "game_over"};
+        MoveRejectedEvent rejected{src, dest, "game_over"};
+        eventBus.publish(rejected);
+        return {false, rejected.reason};
     }
 
     MoveValidation validation = ruleEngine.validate_move(Board::getInstance(), src, dest);
     if (!validation.is_valid) {
-        return {false, validation.reason};
+        MoveRejectedEvent rejected{src, dest, validation.reason};
+        eventBus.publish(rejected);
+        return {false, rejected.reason};
     }
 
     if (!arbiter.start_motion(src, dest)) {
-        return {false, "motion_start_failed"};
+        MoveRejectedEvent rejected{src, dest, "motion_start_failed"};
+        eventBus.publish(rejected);
+        return {false, rejected.reason};
     }
 
+    eventBus.publish(MoveAcceptedEvent{src, dest});
     return {true, "ok"};
 }
 
@@ -26,6 +38,7 @@ void GameEngine::jump(const Position& cell) {
     }
 
     arbiter.start_jump(cell);
+    eventBus.publish(JumpStartedEvent{cell});
 }
 
 void GameEngine::wait(int ms) {
@@ -33,10 +46,13 @@ void GameEngine::wait(int ms) {
     const Board& board = Board::getInstance();
     for (const MoveEvent& move : events.moves) {
         stats.record_move(move, board.getRows(), board.getCols());
+        eventBus.publish(MoveResolvedEvent{move});
     }
     if (events.arrived && events.king_captured) {
         game_over = true;
+        eventBus.publish(GameOverEvent{});
     }
+    eventBus.publish(TimeAdvancedEvent{ms, arbiter.get_current_time()});
 }
 
 bool GameEngine::is_game_over() const {
