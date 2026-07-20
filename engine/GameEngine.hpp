@@ -6,6 +6,8 @@
 
 #include "../model/GameSnapshot.hpp"
 
+#include "../model/GameStats.hpp"
+
 #include "../rules/RuleEngine.hpp"
 
 #include "../realtime/RealTimeArbiter.hpp"
@@ -33,6 +35,8 @@ private:
     RealTimeArbiter arbiter;
 
     bool game_over;
+
+    GameStats stats;
 
 
 

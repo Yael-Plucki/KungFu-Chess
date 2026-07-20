@@ -11,6 +11,7 @@ endif()
 set(MODEL_SRCS
     model/Board.cpp
     model/GameSnapshot.cpp
+    model/GameStats.cpp
     model/Piece.cpp
     model/Position.cpp
 )

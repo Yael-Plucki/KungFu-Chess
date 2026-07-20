@@ -4,12 +4,19 @@
 #include "../model/ActiveMotionInfo.hpp"
 #include "../model/Board.hpp"
 #include "../model/GameConstants.hpp"
+#include "../model/GameStats.hpp"
 #include "../model/Position.hpp"
 #include "Motion.hpp"
 
 struct ArrivalEvents {
     bool arrived = false;
     bool king_captured = false;
+    std::vector<MoveEvent> moves;
+};
+
+struct ArrivalResult {
+    bool king_captured = false;
+    std::optional<MoveEvent> move;
 };
 
 class RealTimeArbiter {
@@ -29,5 +36,5 @@ private:
     int next_motion_sequence = 0;
 
     bool has_motion_from(const Position& src) const;
-    bool resolve_arrival(const Motion& motion);
+    ArrivalResult resolve_arrival(const Motion& motion);
 };

@@ -4,6 +4,7 @@
 #include <vector>
 #include "ActiveMotionInfo.hpp"
 #include "Board.hpp"
+#include "GameStats.hpp"
 #include "Piece.hpp"
 #include "Position.hpp"
 
@@ -26,6 +27,7 @@ struct GameSnapshot {
     std::optional<Position> selected_cell;
     bool game_over;
     long long current_time = 0;
+    GameStats stats;
 
     bool is_empty(const Position& pos) const;
     std::optional<SnapshotPiece> piece_at(const Position& pos) const;

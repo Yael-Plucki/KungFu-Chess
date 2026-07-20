@@ -50,7 +50,8 @@ bool RealTimeArbiter::start_jump(const Position& cell) {
     return true;
 }
 
-bool RealTimeArbiter::resolve_arrival(const Motion& motion) {
+ArrivalResult RealTimeArbiter::resolve_arrival(const Motion& motion) {
+    ArrivalResult result;
     Position src = motion.getSource();
     Position dest = motion.getDestination();
 
@@ -60,7 +61,19 @@ bool RealTimeArbiter::resolve_arrival(const Motion& motion) {
             piece.setState(State::Idle);
             Board::getInstance().update_piece(src, piece);
         }
-        return false;
+
+        const Piece& moving = motion.getPiece();
+        result.move = MoveEvent{
+            moving.getId(),
+            moving.getColor(),
+            moving.getKind(),
+            src,
+            dest,
+            std::nullopt,
+            true,
+            std::nullopt
+        };
+        return result;
     }
 
     Piece moving = motion.getPiece();
@@ -70,19 +83,36 @@ bool RealTimeArbiter::resolve_arrival(const Motion& motion) {
     if (target.getKind() != Kind::Empty &&
         target.getState() == State::Moving &&
         target.getColor() != moving.getColor()) {
-        return moving.getKind() == Kind::King;
+        result.king_captured = moving.getKind() == Kind::King;
+        result.move = MoveEvent{
+            target.getId(),
+            target.getColor(),
+            target.getKind(),
+            dest,
+            dest,
+            moving.getKind(),
+            true,
+            std::nullopt
+        };
+        return result;
     }
 
-    bool king_captured = (target.getKind() == Kind::King);
+    result.king_captured = target.getKind() == Kind::King;
+    std::optional<Kind> captured;
+    if (target.getKind() != Kind::Empty && target.getColor() != moving.getColor()) {
+        captured = target.getKind();
+    }
 
     Piece arrived = moving;
     arrived.setPosition(dest);
     arrived.setState(State::Idle);
 
+    std::optional<Kind> promoted_to;
     if (arrived.getKind() == Kind::Pawn) {
         int promotion_row = (arrived.getColor() == Color::White) ? 0 : Board::getInstance().getRows() - 1;
         if (dest.getRow() == promotion_row) {
             arrived.setKind(Kind::Queen);
+            promoted_to = Kind::Queen;
         }
     }
 
@@ -91,7 +121,17 @@ bool RealTimeArbiter::resolve_arrival(const Motion& motion) {
     }
     Board::getInstance().add_piece(arrived);
 
-    return king_captured;
+    result.move = MoveEvent{
+        moving.getId(),
+        moving.getColor(),
+        moving.getKind(),
+        src,
+        dest,
+        captured,
+        false,
+        promoted_to
+    };
+    return result;
 }
 
 ArrivalEvents RealTimeArbiter::advance_time(int ms) {
@@ -124,8 +164,12 @@ ArrivalEvents RealTimeArbiter::advance_time(int ms) {
             }
 
             events.arrived = true;
-            if (resolve_arrival(motion)) {
+            ArrivalResult result = resolve_arrival(motion);
+            if (result.king_captured) {
                 events.king_captured = true;
+            }
+            if (result.move.has_value()) {
+                events.moves.push_back(result.move.value());
             }
         }
     };

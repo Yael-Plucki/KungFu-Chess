@@ -112,6 +112,43 @@ static void test_capture_idle_defender_after_source_vacated() {
     EXPECT_EQ(snap.pieces.size(), 1u);
     EXPECT_EQ(snap.pieces[0].kind, Kind::Rook);
     EXPECT_EQ(snap.pieces[0].cell, Position(0, 2));
+    EXPECT_EQ(snap.stats.white.score, 1);
+}
+
+static void test_jump_capture_increases_score() {
+    BoardParser parser;
+    parser.parseRows({
+        "wR bR .",
+        ". . .",
+        ". . ."
+    });
+    GameEngine engine;
+
+    engine.jump(Position(0, 0));
+    engine.request_move(Position(0, 1), Position(0, 0));
+    engine.wait(2000);
+
+    GameSnapshot snap = engine.snapshot();
+    EXPECT_EQ(snap.pieces.size(), 1u);
+    EXPECT_EQ(snap.pieces[0].kind, Kind::Rook);
+    EXPECT_EQ(snap.pieces[0].color, Color::White);
+    EXPECT_EQ(snap.stats.white.score, 5);
+}
+
+static void test_score_uses_standard_piece_values() {
+    BoardParser parser;
+    parser.parseRows({
+        ". wR bQ",
+        ". . .",
+        ". . ."
+    });
+    GameEngine engine;
+
+    engine.request_move(Position(0, 1), Position(0, 2));
+    engine.wait(2000);
+
+    GameSnapshot snap = engine.snapshot();
+    EXPECT_EQ(snap.stats.white.score, 9);
 }
 
 int main() {
@@ -121,5 +158,7 @@ int main() {
     RUN_TEST(test_motion_vacates_source_square);
     RUN_TEST(test_can_move_into_vacated_square);
     RUN_TEST(test_capture_idle_defender_after_source_vacated);
+    RUN_TEST(test_jump_capture_increases_score);
+    RUN_TEST(test_score_uses_standard_piece_values);
     return 0;
 }

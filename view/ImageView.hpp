@@ -23,6 +23,7 @@ private:
 
     Img& load_sprite(const std::string& path, const BoardMapper& mapper);
     void draw_board(const GameSnapshot& snapshot, const BoardMapper& mapper);
+    void draw_side_panels(const GameSnapshot& snapshot, const BoardMapper& mapper);
     void draw_selection(const GameSnapshot& snapshot, const BoardMapper& mapper);
     void draw_piece(
         const SnapshotPiece& piece,

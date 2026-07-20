@@ -15,6 +15,7 @@ public:
     int display_width() const;
     int display_height() const;
     int cell_display_size() const;
+    int board_offset_x() const;
     void cell_origin(const Position& cell, int& x, int& y) const;
     void cell_center(const Position& cell, int& x, int& y) const;
     void motion_center(
