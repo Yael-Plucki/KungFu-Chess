@@ -32,6 +32,19 @@ void RemoteGameSession::process_messages() {
     }
 }
 
+bool RemoteGameSession::has_lobby_state() const {
+    return has_lobby_state_;
+}
+
+bool RemoteGameSession::can_join_as_black() const {
+    if (!has_lobby_state_ || lobby_state_.game_started) {
+        return false;
+    }
+    return lobby_state_.players_joined == 1 &&
+           lobby_state_.white_username.has_value() &&
+           !lobby_state_.black_username.has_value();
+}
+
 bool RemoteGameSession::auth_completed() const {
     return auth_completed_;
 }
@@ -95,6 +108,7 @@ void RemoteGameSession::handle_message(const std::string& message) {
 
     if (const std::optional<LobbyStateMessage> lobby = JsonCodec::decode_lobby_state(message)) {
         lobby_state_ = *lobby;
+        has_lobby_state_ = true;
         if (lobby->game_started) {
             std::lock_guard<std::mutex> lock(state_mutex_);
             game_started_ = true;

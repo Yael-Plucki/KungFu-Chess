@@ -16,6 +16,9 @@ NetworkBridge::NetworkBridge(
     UserDatabase& user_database
 )
     : engine_(engine), server_(server), lobby_(lobby), user_database_(user_database) {
+    server_.set_on_connect([this](const std::string& connection_id) {
+        on_client_connected(connection_id);
+    });
     wire_event_handlers();
 }
 
@@ -55,6 +58,10 @@ LobbyStateMessage NetworkBridge::current_lobby_state() const {
     state.players_joined = lobby_.players_joined();
     state.game_started = lobby_.is_started();
     return state;
+}
+
+void NetworkBridge::on_client_connected(const std::string& connection_id) {
+    server_.send_to(connection_id, JsonCodec::encode_lobby_state(current_lobby_state()));
 }
 
 void NetworkBridge::broadcast_lobby_state() {
@@ -102,12 +109,9 @@ void NetworkBridge::process_inbound() {
 void NetworkBridge::join_lobby(const std::string& connection_id, const UserRecord& user) {
     const Lobby::JoinResult result = lobby_.try_login(connection_id, user.username, user.rating);
     broadcast_lobby_state();
-
     if (result == Lobby::JoinResult::Full) {
-        server_.send_to(connection_id, JsonCodec::encode_auth_result(
-            AuthResultMessage{false, user.username, user.rating, "lobby_full"}));
+        return;
     }
-
     try_start_game();
 }
 
@@ -116,19 +120,25 @@ void NetworkBridge::handle_auth(const Protocol::InboundFrame& frame, const Proto
         ? user_database_.register_user(message.username, message.password)
         : user_database_.authenticate(message.username, message.password);
 
-    AuthResultMessage response;
-    response.username = message.username;
-    response.success = auth.status == AuthStatus::Success;
-    response.reason = auth.message;
-    response.rating = auth.user.rating;
-
-    server_.send_to(frame.connection_id, JsonCodec::encode_auth_result(response));
-    if (!response.success) {
+    if (auth.status != AuthStatus::Success) {
+        server_.send_to(frame.connection_id, JsonCodec::encode_auth_result(
+            AuthResultMessage{false, message.username, 0, auth.message}));
         return;
     }
 
+    const Lobby::JoinResult join_result = lobby_.try_login(
+        frame.connection_id, auth.user.username, auth.user.rating);
+    if (join_result == Lobby::JoinResult::Full) {
+        server_.send_to(frame.connection_id, JsonCodec::encode_auth_result(
+            AuthResultMessage{false, auth.user.username, auth.user.rating, "lobby_full"}));
+        return;
+    }
+
+    server_.send_to(frame.connection_id, JsonCodec::encode_auth_result(
+        AuthResultMessage{true, auth.user.username, auth.user.rating, "ok"}));
     authenticated_connections_.insert(frame.connection_id);
-    join_lobby(frame.connection_id, auth.user);
+    broadcast_lobby_state();
+    try_start_game();
 }
 
 void NetworkBridge::handle_game_over() {

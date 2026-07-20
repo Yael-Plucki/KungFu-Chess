@@ -17,6 +17,8 @@ public:
     void send_jump(const Position& cell);
 
     void process_messages();
+    bool has_lobby_state() const;
+    bool can_join_as_black() const;
     bool auth_completed() const;
     bool auth_succeeded() const;
     std::string auth_error() const;
@@ -35,6 +37,7 @@ private:
     std::string username_;
     bool game_started_ = false;
     bool has_snapshot_ = false;
+    bool has_lobby_state_ = false;
     GameSnapshot latest_snapshot_;
     LobbyStateMessage lobby_state_;
     mutable std::mutex state_mutex_;

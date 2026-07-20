@@ -21,6 +21,7 @@ public:
 
     void broadcast(const std::string& message);
     void send_to(const std::string& connection_id, const std::string& message);
+    void set_on_connect(std::function<void(const std::string& connection_id)> callback);
     void enqueue_inbound(const std::string& connection_id, const std::string& message);
     bool pop_inbound(Protocol::InboundFrame& frame);
 

@@ -41,16 +41,20 @@ int main(int argc, char** argv) {
     try {
         use_project_root_as_working_directory();
 
-        const LoginResult login = HomeScreen::prompt_auth(std::cin, std::cout);
-        if (!login.success) {
-            std::cout << login.error << std::endl;
-            return 1;
-        }
+        HomeScreen::render(std::cout);
 
         WebSocketClient client;
         client.connect(server_url(argc, argv));
 
         RemoteGameSession session(client);
+        HomeScreen::wait_for_lobby_state(session, std::cout);
+
+        const LoginResult login = HomeScreen::prompt_auth(std::cin, std::cout, &session);
+        if (!login.success) {
+            std::cout << login.error << std::endl;
+            return 1;
+        }
+
         session.send_auth(
             login.username,
             login.password,

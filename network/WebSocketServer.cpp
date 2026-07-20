@@ -12,6 +12,7 @@ struct WebSocketServer::Impl {
     ix::WebSocketServer server;
     std::mutex connections_mutex;
     std::unordered_map<std::string, std::weak_ptr<ix::WebSocket>> connections;
+    std::function<void(const std::string& connection_id)> on_connect;
 
     explicit Impl(int port, std::string host)
         : server(port, std::move(host)) {}
@@ -48,6 +49,10 @@ void WebSocketServer::start() {
                 impl_->connections[connection_state->getId()] = socket;
             }
 
+            if (impl_->on_connect) {
+                impl_->on_connect(connection_state->getId());
+            }
+
             socket->setOnMessageCallback(
                 [this, connection_state](const ix::WebSocketMessagePtr& msg) {
                     if (msg->type != ix::WebSocketMessageType::Message || connection_state == nullptr) {
@@ -79,17 +84,6 @@ bool WebSocketServer::is_running() const {
     return running_;
 }
 
-void WebSocketServer::broadcast(const std::string& message) {
-    if (!running_ || impl_ == nullptr) {
-        return;
-    }
-
-    const std::set<std::shared_ptr<ix::WebSocket>> clients = impl_->server.getClients();
-    for (const std::shared_ptr<ix::WebSocket>& client : clients) {
-        client->send(message);
-    }
-}
-
 void WebSocketServer::send_to(const std::string& connection_id, const std::string& message) {
     if (!running_ || impl_ == nullptr) {
         return;
@@ -106,6 +100,23 @@ void WebSocketServer::send_to(const std::string& connection_id, const std::strin
 
     if (socket != nullptr) {
         socket->send(message);
+    }
+}
+
+void WebSocketServer::set_on_connect(std::function<void(const std::string& connection_id)> callback) {
+    if (impl_ != nullptr) {
+        impl_->on_connect = std::move(callback);
+    }
+}
+
+void WebSocketServer::broadcast(const std::string& message) {
+    if (!running_ || impl_ == nullptr) {
+        return;
+    }
+
+    const std::set<std::shared_ptr<ix::WebSocket>> clients = impl_->server.getClients();
+    for (const std::shared_ptr<ix::WebSocket>& client : clients) {
+        client->send(message);
     }
 }
 

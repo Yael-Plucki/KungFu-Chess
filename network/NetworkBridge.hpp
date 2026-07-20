@@ -20,6 +20,7 @@ public:
     void broadcast_snapshot();
     void broadcast_lobby_state();
     bool try_start_game();
+    void on_client_connected(const std::string& connection_id);
 
 private:
     GameEngine& engine_;
