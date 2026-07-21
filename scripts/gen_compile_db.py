@@ -3,46 +3,81 @@ import os
 import sys
 
 WORKSPACE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OPENCV_INC = os.path.join("cpp", "OpenCV_451", "include")
+
+LOGIC = os.path.join("src", "logic")
+UI = os.path.join("src", "ui")
+SERVER = os.path.join("src", "server")
+TESTS = os.path.join("src", "tests")
+LIB = "lib"
+
+INCLUDE_FLAGS = [
+    f"-I{LOGIC}",
+    f"-I{UI}",
+    f"-I{SERVER}",
+    f"-I{TESTS}",
+    f"-I{os.path.join(LIB, 'OpenCV_451', 'include')}",
+    f"-I{os.path.join(LIB, 'CTD26', 'cpp', 'src')}",
+    "-Ibuild/_deps/nlohmann_json-src/include",
+    "-Ibuild/_deps/ixwebsocket-src",
+]
+
 OPENCV_SRCS = {
-    os.path.join("view", "ImageVIew.cpp"),
-    os.path.join("view", "Renderer.cpp"),
-    os.path.join("CTD26", "cpp", "src", "img.cpp"),
-    "gui_main.cpp",
+    os.path.join(UI, "view", "ImageVIew.cpp"),
+    os.path.join(UI, "view", "Renderer.cpp"),
+    os.path.join(LIB, "CTD26", "cpp", "src", "img.cpp"),
+    os.path.join(UI, "gui_main.cpp"),
 }
-BASE_FLAGS = ["-std=c++17", "-Wall", "-I.", "--target=x86_64-pc-windows-msvc"]
+
+BASE_FLAGS = ["-std=c++17", "-Wall", "--target=x86_64-pc-windows-msvc"] + INCLUDE_FLAGS
 
 SOURCES = [
-    os.path.join("model", "Board.cpp"),
-    os.path.join("model", "GameSnapshot.cpp"),
-    os.path.join("model", "Piece.cpp"),
-    os.path.join("model", "Position.cpp"),
-    os.path.join("rules", "PieceRules.cpp"),
-    os.path.join("rules", "RuleEngine.cpp"),
-    os.path.join("realtime", "Motion.cpp"),
-    os.path.join("realtime", "RealTimeArbiter.cpp"),
-    os.path.join("engine", "GameEngine.cpp"),
-    os.path.join("input", "BoardMapper.cpp"),
-    os.path.join("input", "Controller.cpp"),
-    os.path.join("io", "BoardParser.cpp"),
-    os.path.join("io", "BoardPrinter.cpp"),
-    os.path.join("texttests", "ScriptRunner.cpp"),
-    "main.cpp",
-    "gui_main.cpp",
-    os.path.join("view", "ImageVIew.cpp"),
-    os.path.join("view", "Renderer.cpp"),
-    os.path.join("CTD26", "cpp", "src", "img.cpp"),
-    os.path.join("view", "animation", "AnimationConfig.cpp"),
-    os.path.join("view", "animation", "PieceAnimator.cpp"),
-    os.path.join("view", "animation", "AnimatorRegistry.cpp"),
-    os.path.join("tests", "test_board.cpp"),
-    os.path.join("tests", "test_board_mapper.cpp"),
-    os.path.join("tests", "test_board_parser.cpp"),
-    os.path.join("tests", "test_game_engine.cpp"),
-    os.path.join("tests", "test_piece_animator.cpp"),
-    os.path.join("tests", "test_piece_rules.cpp"),
-    os.path.join("tests", "test_rule_engine.cpp"),
-    os.path.join("tests", "test_script_runner.cpp"),
+    os.path.join(LOGIC, "model", "Board.cpp"),
+    os.path.join(LOGIC, "model", "GameSnapshot.cpp"),
+    os.path.join(LOGIC, "model", "GameStats.cpp"),
+    os.path.join(LOGIC, "model", "Piece.cpp"),
+    os.path.join(LOGIC, "model", "Position.cpp"),
+    os.path.join(LOGIC, "rules", "PieceRules.cpp"),
+    os.path.join(LOGIC, "rules", "RuleEngine.cpp"),
+    os.path.join(LOGIC, "realtime", "Motion.cpp"),
+    os.path.join(LOGIC, "realtime", "RealTimeArbiter.cpp"),
+    os.path.join(LOGIC, "engine", "GameEngine.cpp"),
+    os.path.join(LOGIC, "input", "BoardMapper.cpp"),
+    os.path.join(LOGIC, "input", "Controller.cpp"),
+    os.path.join(LOGIC, "io", "BoardParser.cpp"),
+    os.path.join(LOGIC, "io", "BoardPrinter.cpp"),
+    os.path.join(LOGIC, "texttests", "ScriptRunner.cpp"),
+    os.path.join(LOGIC, "network", "JsonCodec.cpp"),
+    os.path.join(LOGIC, "network", "MatchmakingQueue.cpp"),
+    os.path.join(UI, "main.cpp"),
+    os.path.join(UI, "gui_main.cpp"),
+    os.path.join(UI, "shell", "HomeScreen.cpp"),
+    os.path.join(UI, "input", "RemoteController.cpp"),
+    os.path.join(UI, "network", "RemoteGameSession.cpp"),
+    os.path.join(UI, "network", "WebSocketClient.cpp"),
+    os.path.join(UI, "view", "ImageVIew.cpp"),
+    os.path.join(UI, "view", "Renderer.cpp"),
+    os.path.join(LIB, "CTD26", "cpp", "src", "img.cpp"),
+    os.path.join(UI, "view", "animation", "AnimationConfig.cpp"),
+    os.path.join(UI, "view", "animation", "PieceAnimator.cpp"),
+    os.path.join(UI, "view", "animation", "AnimatorRegistry.cpp"),
+    os.path.join(SERVER, "server_main.cpp"),
+    os.path.join(SERVER, "network", "Lobby.cpp"),
+    os.path.join(SERVER, "network", "NetworkBridge.cpp"),
+    os.path.join(SERVER, "network", "WebSocketServer.cpp"),
+    os.path.join(SERVER, "storage", "EloRating.cpp"),
+    os.path.join(SERVER, "storage", "PasswordHasher.cpp"),
+    os.path.join(SERVER, "storage", "UserDatabase.cpp"),
+    os.path.join(TESTS, "test_board.cpp"),
+    os.path.join(TESTS, "test_board_mapper.cpp"),
+    os.path.join(TESTS, "test_board_parser.cpp"),
+    os.path.join(TESTS, "test_game_engine.cpp"),
+    os.path.join(TESTS, "test_piece_animator.cpp"),
+    os.path.join(TESTS, "test_piece_rules.cpp"),
+    os.path.join(TESTS, "test_rule_engine.cpp"),
+    os.path.join(TESTS, "test_script_runner.cpp"),
+    os.path.join(TESTS, "test_matchmaking.cpp"),
+    os.path.join(TESTS, "test_json_codec.cpp"),
+    os.path.join(TESTS, "test_home_screen.cpp"),
 ]
 
 
@@ -98,9 +133,7 @@ def isystem_flags(paths: list[str]) -> list[str]:
 def build_command(src: str, system_includes: list[str]) -> str:
     flags = list(BASE_FLAGS)
     flags.extend(isystem_flags(system_includes))
-    if src in OPENCV_SRCS:
-        flags.append("-I" + OPENCV_INC)
-    obj = os.path.splitext(src)[0] + ".obj"
+    obj = os.path.splitext(src)[0].replace(os.sep, "_") + ".obj"
     return "clang++ " + " ".join(flags) + " -c -o " + obj + " " + src
 
 
@@ -112,6 +145,8 @@ def write_clangd(system_includes: list[str]) -> None:
         "    - -Wno-unknown-warning-option",
         "    - -Wno-microsoft-enum-value",
     ]
+    for inc in INCLUDE_FLAGS:
+        lines.append(f"    - {inc}")
     for path in system_includes:
         lines.append("    - -isystem")
         lines.append(f"    - {quote_path(path.replace(chr(92), '/'))}")
@@ -120,7 +155,7 @@ def write_clangd(system_includes: list[str]) -> None:
             "",
             "---",
             "If:",
-            "  PathMatch: cpp/OpenCV_451/.*",
+            "  PathMatch: lib/OpenCV_451/.*",
             "Index:",
             "  Background: Skip",
             "",
@@ -138,6 +173,9 @@ def main() -> int:
 
     entries = []
     for src in SOURCES:
+        if not os.path.isfile(os.path.join(WORKSPACE, src)):
+            print(f"Warning: skipping missing source {src}")
+            continue
         entries.append(
             {
                 "directory": WORKSPACE,

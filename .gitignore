@@ -6,9 +6,9 @@
 *.ilk
 
 # Keep bundled OpenCV import libs, but not large runtime DLLs
-OpenCV_451/bin/*.dll
+lib/OpenCV_451/bin/*.dll
 *.lib
-!/OpenCV_451/bin/*.lib
+!/lib/OpenCV_451/bin/*.lib
 
 # Copied runtime dependency at repo root
 /opencv_world451.dll
@@ -22,4 +22,4 @@ compile_commands.json
 .vscode/
 
 # Nested CTD26 repo metadata (assets are tracked as normal files)
-CTD26/.git/
+lib/CTD26/.git/

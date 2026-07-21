@@ -1,0 +1,27 @@
+CompileFlags:
+  Add:
+    - --target=x86_64-pc-windows-msvc
+    - -Wno-unknown-warning-option
+    - -Wno-microsoft-enum-value
+    - -Isrc\logic
+    - -Isrc\ui
+    - -Isrc\server
+    - -Isrc\tests
+    - -Ilib\OpenCV_451\include
+    - -Ilib\CTD26\cpp\src
+    - -Ibuild/_deps/nlohmann_json-src/include
+    - -Ibuild/_deps/ixwebsocket-src
+    - -isystem
+    - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/include"
+    - -isystem
+    - "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/ucrt"
+    - -isystem
+    - "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/shared"
+    - -isystem
+    - "C:/Program Files (x86)/Windows Kits/10/Include/10.0.26100.0/um"
+
+---
+If:
+  PathMatch: lib/OpenCV_451/.*
+Index:
+  Background: Skip
