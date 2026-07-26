@@ -19,6 +19,7 @@ public:
     bool is_ready() const;
     bool is_started() const;
     void start_game();
+    void end_game();
     void set_winner(Color color);
     void update_ratings(int white_rating, int black_rating);
     void remove_player(const std::string& connection_id);

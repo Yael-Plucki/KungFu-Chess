@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/EventBus.hpp"
+#include "model/Piece.hpp"
 #include "model/Position.hpp"
 #include "network/JsonCodec.hpp"
 #include <chrono>
@@ -30,20 +32,24 @@ public:
     bool auth_succeeded() const;
     std::string auth_error() const;
     int player_rating() const;
+    std::optional<Color> player_color() const;
     bool game_started() const;
     bool has_snapshot() const;
     bool opponent_disconnected() const;
     int disconnect_countdown_seconds() const;
     GameSnapshot snapshot_with_selection(std::optional<Position> selected_cell) const;
     const LobbyStateMessage& lobby_state() const;
+    void set_event_bus(EventBus* event_bus);
 
 private:
     WebSocketClient& client_;
+    EventBus* event_bus_ = nullptr;
     bool auth_completed_ = false;
     bool auth_succeeded_ = false;
     std::string auth_error_;
     int player_rating_ = 1200;
     std::string username_;
+    std::optional<Color> player_color_;
     bool game_started_ = false;
     bool has_snapshot_ = false;
     bool has_lobby_state_ = false;
@@ -54,4 +60,5 @@ private:
     mutable std::mutex state_mutex_;
 
     void handle_message(const std::string& message);
+    void publish_snapshot(const GameSnapshot& snapshot);
 };

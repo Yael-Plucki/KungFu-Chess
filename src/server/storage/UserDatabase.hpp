@@ -5,7 +5,7 @@
 
 struct UserRecord {
     std::string username;
-    int rating = 1200;
+    int score = 1200;
 };
 
 enum class AuthStatus {
@@ -29,7 +29,7 @@ public:
     AuthResult register_user(const std::string& username, const std::string& password);
     AuthResult authenticate(const std::string& username, const std::string& password);
     std::optional<UserRecord> get_user(const std::string& username) const;
-    bool update_rating(const std::string& username, int rating);
+    bool update_score(const std::string& username, int score);
 
 private:
     std::string db_path_;

@@ -33,4 +33,19 @@ bool verify_password(const std::string& password, const std::string& salt, const
     return hash_password(password, salt) == hash;
 }
 
+std::string format_stored_password(const std::string& salt, const std::string& hash) {
+    return salt + ":" + hash;
+}
+
+bool verify_stored_password(const std::string& password, const std::string& stored) {
+    const std::size_t separator = stored.find(':');
+    if (separator == std::string::npos) {
+        return false;
+    }
+
+    const std::string salt = stored.substr(0, separator);
+    const std::string hash = stored.substr(separator + 1);
+    return verify_password(password, salt, hash);
+}
+
 }  // namespace PasswordHasher

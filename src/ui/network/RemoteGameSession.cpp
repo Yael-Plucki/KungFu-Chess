@@ -1,9 +1,29 @@
 #include "RemoteGameSession.hpp"
 
+#include "core/GameEvents.hpp"
 #include "network/Protocol.hpp"
 #include "network/WebSocketClient.hpp"
 
+namespace {
+
+bool is_snapshot_message(const std::string& message) {
+    return message.find(std::string("\"") + "type" + "\":\"" + Protocol::kSnapshot + "\"") != std::string::npos ||
+           message.find(std::string("\"") + "type" + "\": \"" + Protocol::kSnapshot + "\"") != std::string::npos;
+}
+
+}  // namespace
+
 RemoteGameSession::RemoteGameSession(WebSocketClient& client) : client_(client) {}
+
+void RemoteGameSession::set_event_bus(EventBus* event_bus) {
+    event_bus_ = event_bus;
+}
+
+void RemoteGameSession::publish_snapshot(const GameSnapshot& snapshot) {
+    if (event_bus_ != nullptr) {
+        event_bus_->publish(SnapshotUpdatedEvent{snapshot});
+    }
+}
 
 void RemoteGameSession::send_auth(const std::string& username, const std::string& password, bool register_account) {
     client_.send(JsonCodec::encode_auth(username, password, register_account));
@@ -39,8 +59,18 @@ void RemoteGameSession::send_jump(const Position& cell) {
 
 void RemoteGameSession::process_messages() {
     std::string message;
+    std::string latest_snapshot_message;
+
     while (client_.pop_message(message)) {
+        if (is_snapshot_message(message)) {
+            latest_snapshot_message = std::move(message);
+            continue;
+        }
         handle_message(message);
+    }
+
+    if (!latest_snapshot_message.empty()) {
+        handle_message(latest_snapshot_message);
     }
 }
 
@@ -71,6 +101,10 @@ std::string RemoteGameSession::auth_error() const {
 
 int RemoteGameSession::player_rating() const {
     return player_rating_;
+}
+
+std::optional<Color> RemoteGameSession::player_color() const {
+    return player_color_;
 }
 
 bool RemoteGameSession::game_started() const {
@@ -110,6 +144,20 @@ const LobbyStateMessage& RemoteGameSession::lobby_state() const {
     return lobby_state_;
 }
 
+namespace {
+
+std::optional<Color> color_from_string(const std::string& value) {
+    if (value == "white") {
+        return Color::White;
+    }
+    if (value == "black") {
+        return Color::Black;
+    }
+    return std::nullopt;
+}
+
+}  // namespace
+
 void RemoteGameSession::handle_message(const std::string& message) {
     if (const std::optional<AuthResultMessage> auth = JsonCodec::decode_auth_result(message)) {
         auth_completed_ = true;
@@ -118,6 +166,9 @@ void RemoteGameSession::handle_message(const std::string& message) {
         if (auth->success) {
             player_rating_ = auth->rating;
             username_ = auth->username;
+            if (auth->assigned_color.has_value()) {
+                player_color_ = color_from_string(*auth->assigned_color);
+            }
         }
         return;
     }
@@ -140,6 +191,11 @@ void RemoteGameSession::handle_message(const std::string& message) {
         lobby_state_.white_rating = started->white_rating;
         lobby_state_.black_rating = started->black_rating;
         lobby_state_.players_joined = 2;
+        if (username_ == started->white_username) {
+            player_color_ = Color::White;
+        } else if (username_ == started->black_username) {
+            player_color_ = Color::Black;
+        }
         return;
     }
 
@@ -154,10 +210,13 @@ void RemoteGameSession::handle_message(const std::string& message) {
     }
 
     if (const std::optional<GameSnapshot> snapshot = JsonCodec::decode_snapshot(message)) {
-        std::lock_guard<std::mutex> lock(state_mutex_);
-        latest_snapshot_ = *snapshot;
-        has_snapshot_ = true;
-        game_started_ = true;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            latest_snapshot_ = *snapshot;
+            has_snapshot_ = true;
+            game_started_ = true;
+        }
+        publish_snapshot(*snapshot);
         return;
     }
 
@@ -168,7 +227,41 @@ void RemoteGameSession::handle_message(const std::string& message) {
             player_rating_ = game_over->black_rating;
         }
 
-        std::lock_guard<std::mutex> lock(state_mutex_);
-        latest_snapshot_.game_over = true;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            latest_snapshot_.game_over = true;
+        }
+        if (event_bus_ != nullptr) {
+            event_bus_->publish(GameOverEvent{});
+        }
+        return;
+    }
+
+    if (const std::optional<MoveAcceptedEvent> accepted = JsonCodec::decode_move_accepted(message)) {
+        if (event_bus_ != nullptr) {
+            event_bus_->publish(*accepted);
+        }
+        return;
+    }
+
+    if (const std::optional<MoveRejectedEvent> rejected = JsonCodec::decode_move_rejected(message)) {
+        if (event_bus_ != nullptr) {
+            event_bus_->publish(*rejected);
+        }
+        return;
+    }
+
+    if (const std::optional<JumpStartedEvent> jump = JsonCodec::decode_jump_started(message)) {
+        if (event_bus_ != nullptr) {
+            event_bus_->publish(*jump);
+        }
+        return;
+    }
+
+    if (const std::optional<MoveResolvedEvent> resolved = JsonCodec::decode_move_resolved(message)) {
+        if (event_bus_ != nullptr) {
+            event_bus_->publish(*resolved);
+        }
+        return;
     }
 }

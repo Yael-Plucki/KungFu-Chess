@@ -3,7 +3,7 @@
 namespace GameConstants {
     constexpr int CELL_SIZE = 60;
     constexpr int PIECE_SPEED = 100;
-    constexpr int MS_PER_CELL = 1000;
+    constexpr int MS_PER_CELL = 1500;
     constexpr int SIDE_PANEL_WIDTH = 180;
 
     constexpr int SCORE_PAWN = 1;

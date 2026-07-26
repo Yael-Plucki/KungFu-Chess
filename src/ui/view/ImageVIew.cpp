@@ -105,7 +105,12 @@ ImageView::ImageView(std::string assets_root)
     : assets_root(std::move(assets_root)) {}
 
 void ImageView::render(const GameSnapshot& snapshot, const AnimatorRegistry& animators) {
-    const BoardMapper mapper(snapshot.board_height, snapshot.board_width);
+    const BoardMapper mapper(
+        snapshot.board_height,
+        snapshot.board_width,
+        snapshot.cell_size,
+        snapshot.side_panel_width
+    );
     canvas.create(mapper.display_width(), mapper.display_height(), CV_8UC3, cv::Scalar(40, 40, 40));
 
     draw_side_panels(snapshot, mapper);
@@ -114,6 +119,22 @@ void ImageView::render(const GameSnapshot& snapshot, const AnimatorRegistry& ani
         draw_piece(piece, animators.sprite_path_for(piece), mapper, snapshot.current_time);
     }
     draw_selection(snapshot, mapper);
+}
+
+void ImageView::warm_cache(const GameSnapshot& snapshot, const AnimatorRegistry& animators) {
+    const BoardMapper mapper(
+        snapshot.board_height,
+        snapshot.board_width,
+        snapshot.cell_size,
+        snapshot.side_panel_width
+    );
+
+    for (const SnapshotPiece& piece : snapshot.pieces) {
+        try {
+            load_sprite(animators.sprite_path_for(piece), mapper);
+        } catch (const std::exception&) {
+        }
+    }
 }
 
 Img& ImageView::load_sprite(const std::string& path, const BoardMapper& mapper) {
@@ -268,7 +289,7 @@ void draw_color_panel(
 
 void ImageView::draw_side_panels(const GameSnapshot& snapshot, const BoardMapper& mapper) {
     cv::Mat& frame = canvas.mat();
-    const int panel_width = GameConstants::SIDE_PANEL_WIDTH;
+    const int panel_width = mapper.side_panel_width();
     const int panel_height = mapper.display_height();
 
     draw_color_panel(frame, 0, panel_width, panel_height, Color::White, snapshot.stats.white,
@@ -315,7 +336,10 @@ void ImageView::draw_piece(
     int center_x = 0;
     int center_y = 0;
     if (piece.motion.has_value()) {
-        mapper.motion_center(piece.motion.value(), current_time, center_x, center_y);
+        const long long motion_time = piece.motion_elapsed_ms.has_value()
+            ? piece.motion_elapsed_ms.value()
+            : current_time;
+        mapper.motion_center(piece.motion.value(), motion_time, center_x, center_y);
     } else {
         mapper.cell_center(piece.cell, center_x, center_y);
     }
@@ -335,6 +359,92 @@ void ImageView::draw_piece(
             piece.color == Color::White ? cv::Scalar(240, 240, 240) : cv::Scalar(30, 30, 30),
             cv::FILLED
         );
+    }
+}
+
+void ImageView::draw_game_over_banner() {
+    cv::Mat& frame = canvas.mat();
+    const std::string text = "Game Over";
+
+    constexpr double scale = 1.4;
+    constexpr int thickness = 3;
+    int baseline = 0;
+    const cv::Size size = cv::getTextSize(
+        text,
+        cv::FONT_HERSHEY_SIMPLEX,
+        scale,
+        thickness,
+        &baseline
+    );
+
+    const int x = (frame.cols - size.width) / 2;
+    const int y = (frame.rows + size.height) / 2;
+
+    cv::rectangle(
+        frame,
+        cv::Point(x - 24, y - size.height - 24),
+        cv::Point(x + size.width + 24, y + baseline + 24),
+        cv::Scalar(20, 20, 20),
+        cv::FILLED
+    );
+    cv::putText(
+        frame,
+        text,
+        cv::Point(x, y),
+        cv::FONT_HERSHEY_SIMPLEX,
+        scale,
+        cv::Scalar(255, 255, 255),
+        thickness,
+        cv::LINE_AA
+    );
+}
+
+void ImageView::draw_error_banner(const std::string& message) {
+    cv::Mat& frame = canvas.mat();
+    const std::string prefix = "Move rejected: ";
+    const std::string text = prefix + message;
+
+    constexpr double scale = 0.7;
+    constexpr int thickness = 2;
+    constexpr int padding_x = 16;
+    constexpr int padding_y = 12;
+    const int max_text_width = frame.cols - (padding_x * 2);
+
+    int baseline = 0;
+    const cv::Size size = cv::getTextSize(
+        text,
+        cv::FONT_HERSHEY_SIMPLEX,
+        scale,
+        thickness,
+        &baseline
+    );
+
+    const std::vector<std::string> lines = wrap_text(text, max_text_width, scale);
+    const int line_height = size.height + 8;
+    const int banner_height = (static_cast<int>(lines.size()) * line_height) + (padding_y * 2);
+    const int banner_top = frame.rows - banner_height;
+
+    cv::rectangle(
+        frame,
+        cv::Point(0, banner_top),
+        cv::Point(frame.cols, frame.rows),
+        cv::Scalar(30, 30, 170),
+        cv::FILLED
+    );
+
+    int y = banner_top + padding_y + size.height;
+    for (const std::string& line : lines) {
+        cv::putText(
+            frame,
+            line,
+            cv::Point(padding_x, y),
+            cv::FONT_HERSHEY_SIMPLEX,
+            scale,
+            cv::Scalar(255, 255, 255),
+            thickness,
+            cv::LINE_AA
+        );
+        y += line_height;
     }
 }
 

@@ -11,6 +11,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 class GameEngine;
 class Lobby;
@@ -60,7 +61,11 @@ private:
     void handle_disconnect(const std::string& connection_id);
     void handle_game_over();
     void handle_forfeit(Color winner);
+    void finalize_match_with_elo(double white_score, const std::string& winner_color);
+    void sync_authenticated_user_rating(const std::string& username, int rating);
     void try_match_and_start();
+    void prepare_rematch();
+    bool can_control_piece(const std::string& connection_id, const Position& cell) const;
     GameSnapshot build_snapshot() const;
     LobbyStateMessage current_lobby_state() const;
     std::optional<AuthenticatedUser> authenticated_user_for(const std::string& connection_id) const;

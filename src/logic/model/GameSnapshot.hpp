@@ -4,6 +4,7 @@
 #include <vector>
 #include "ActiveMotionInfo.hpp"
 #include "Board.hpp"
+#include "GameConstants.hpp"
 #include "GameStats.hpp"
 #include "Piece.hpp"
 #include "Position.hpp"
@@ -16,6 +17,8 @@ struct SnapshotPiece {
     Position cell;
     std::optional<ActiveMotionInfo> motion;
     bool is_jump_motion = false;
+    // Wall-clock elapsed ms for client-side motion rendering (start_time should be 0).
+    std::optional<long long> motion_elapsed_ms;
 };
 
 // Read-only view DTO for the renderer, controller, and printer.
@@ -23,6 +26,8 @@ struct SnapshotPiece {
 struct GameSnapshot {
     int board_width;
     int board_height;
+    int cell_size = GameConstants::CELL_SIZE;
+    int side_panel_width = GameConstants::SIDE_PANEL_WIDTH;
     std::vector<SnapshotPiece> pieces;
     std::optional<Position> selected_cell;
     bool game_over;

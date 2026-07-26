@@ -1,5 +1,6 @@
 #include "JsonCodec.hpp"
 
+#include "../model/GameConstants.hpp"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -124,6 +125,80 @@ json move_event_to_json(const MoveEvent& move, int board_rows, int board_cols) {
     return value;
 }
 
+MoveEvent move_event_from_json(const json& value) {
+    MoveEvent move;
+    move.piece_id = value.at("piece_id").get<int>();
+    move.color = color_from_string(value.at("color").get<std::string>());
+    move.kind = kind_from_string(value.at("kind").get<std::string>());
+    move.from = position_from_json(value.at("from"));
+    move.to = position_from_json(value.at("to"));
+    move.is_jump = value.value("is_jump", false);
+    if (value.contains("captured") && !value.at("captured").is_null()) {
+        move.captured = kind_from_string(value.at("captured").get<std::string>());
+    }
+    if (value.contains("promoted_to") && !value.at("promoted_to").is_null()) {
+        move.promoted_to = kind_from_string(value.at("promoted_to").get<std::string>());
+    }
+    return move;
+}
+
+json piece_history_to_json(const PieceMoveHistory& piece) {
+    return json{
+        {"piece_id", piece.piece_id},
+        {"color", color_to_string(piece.color)},
+        {"kind", kind_to_string(piece.kind)},
+        {"moves", piece.moves}
+    };
+}
+
+PieceMoveHistory piece_history_from_json(const json& value) {
+    PieceMoveHistory piece;
+    piece.piece_id = value.at("piece_id").get<int>();
+    piece.color = color_from_string(value.at("color").get<std::string>());
+    piece.kind = kind_from_string(value.at("kind").get<std::string>());
+    for (const json& move : value.at("moves")) {
+        piece.moves.push_back(move.get<std::string>());
+    }
+    return piece;
+}
+
+json stats_to_json(const GameStats& stats) {
+    json white_pieces = json::array();
+    for (const PieceMoveHistory& piece : stats.white.pieces) {
+        white_pieces.push_back(piece_history_to_json(piece));
+    }
+
+    json black_pieces = json::array();
+    for (const PieceMoveHistory& piece : stats.black.pieces) {
+        black_pieces.push_back(piece_history_to_json(piece));
+    }
+
+    return json{
+        {"white_score", stats.white.score},
+        {"black_score", stats.black.score},
+        {"white_pieces", white_pieces},
+        {"black_pieces", black_pieces}
+    };
+}
+
+void stats_from_json(const json& payload, GameStats& stats) {
+    stats.white.score = payload.at("white_score").get<int>();
+    stats.black.score = payload.at("black_score").get<int>();
+    stats.white.pieces.clear();
+    stats.black.pieces.clear();
+
+    if (payload.contains("white_pieces")) {
+        for (const json& piece_json : payload.at("white_pieces")) {
+            stats.white.pieces.push_back(piece_history_from_json(piece_json));
+        }
+    }
+    if (payload.contains("black_pieces")) {
+        for (const json& piece_json : payload.at("black_pieces")) {
+            stats.black.pieces.push_back(piece_history_from_json(piece_json));
+        }
+    }
+}
+
 }  // namespace
 
 std::optional<Protocol::InboundMessage> JsonCodec::parse_inbound(const std::string& json_text) {
@@ -200,13 +275,17 @@ std::string JsonCodec::encode_resign() {
 }
 
 std::string JsonCodec::encode_auth_result(const AuthResultMessage& result) {
-    return json{
+    json payload = json{
         {"type", Protocol::kAuthResult},
         {"success", result.success},
         {"username", result.username},
         {"rating", result.rating},
         {"reason", result.reason}
-    }.dump();
+    };
+    if (result.assigned_color.has_value()) {
+        payload["assigned_color"] = *result.assigned_color;
+    }
+    return payload.dump();
 }
 
 std::string JsonCodec::encode_snapshot(const GameSnapshot& snapshot) {
@@ -224,14 +303,13 @@ std::string JsonCodec::encode_snapshot(const GameSnapshot& snapshot) {
         {"type", Protocol::kSnapshot},
         {"board_width", snapshot.board_width},
         {"board_height", snapshot.board_height},
+        {"cell_size", snapshot.cell_size},
+        {"side_panel_width", snapshot.side_panel_width},
         {"game_over", snapshot.game_over},
         {"current_time_ms", snapshot.current_time},
         {"selected_cell", selected},
         {"pieces", pieces},
-        {"stats", json{
-            {"white_score", snapshot.stats.white.score},
-            {"black_score", snapshot.stats.black.score}
-        }},
+        {"stats", stats_to_json(snapshot.stats)},
         {"white_player", snapshot.white_player_name},
         {"black_player", snapshot.black_player_name},
         {"white_rating", snapshot.white_player_rating},
@@ -270,7 +348,10 @@ std::string JsonCodec::encode_move_accepted(const MoveAcceptedEvent& event) {
     return json{
         {"type", Protocol::kMoveAccepted},
         {"src", position_to_json(event.src)},
-        {"dest", position_to_json(event.dest)}
+        {"dest", position_to_json(event.dest)},
+        {"start_time_ms", event.start_time_ms},
+        {"duration_ms", event.duration_ms},
+        {"current_time_ms", event.current_time_ms}
     }.dump();
 }
 
@@ -286,7 +367,10 @@ std::string JsonCodec::encode_move_rejected(const MoveRejectedEvent& event) {
 std::string JsonCodec::encode_jump_started(const JumpStartedEvent& event) {
     return json{
         {"type", Protocol::kJumpStarted},
-        {"cell", position_to_json(event.cell)}
+        {"cell", position_to_json(event.cell)},
+        {"start_time_ms", event.start_time_ms},
+        {"duration_ms", event.duration_ms},
+        {"current_time_ms", event.current_time_ms}
     }.dump();
 }
 
@@ -327,10 +411,11 @@ std::optional<GameSnapshot> JsonCodec::decode_snapshot(const std::string& json_t
         GameSnapshot snapshot;
         snapshot.board_width = payload.at("board_width").get<int>();
         snapshot.board_height = payload.at("board_height").get<int>();
+        snapshot.cell_size = payload.value("cell_size", GameConstants::CELL_SIZE);
+        snapshot.side_panel_width = payload.value("side_panel_width", GameConstants::SIDE_PANEL_WIDTH);
         snapshot.game_over = payload.at("game_over").get<bool>();
         snapshot.current_time = payload.at("current_time_ms").get<long long>();
-        snapshot.stats.white.score = payload.at("stats").at("white_score").get<int>();
-        snapshot.stats.black.score = payload.at("stats").at("black_score").get<int>();
+        stats_from_json(payload.at("stats"), snapshot.stats);
 
         if (payload.contains("white_player") && !payload.at("white_player").is_null()) {
             snapshot.white_player_name = payload.at("white_player").get<std::string>();
@@ -435,6 +520,9 @@ std::optional<AuthResultMessage> JsonCodec::decode_auth_result(const std::string
         result.username = payload.value("username", "");
         result.rating = payload.value("rating", 1200);
         result.reason = payload.value("reason", "");
+        if (payload.contains("assigned_color") && !payload.at("assigned_color").is_null()) {
+            result.assigned_color = payload.at("assigned_color").get<std::string>();
+        }
         return result;
     } catch (const std::exception&) {
         return std::nullopt;
@@ -472,6 +560,73 @@ std::optional<PlayerDisconnectedMessage> JsonCodec::decode_player_disconnected(c
         return PlayerDisconnectedMessage{
             payload.value("seconds_remaining", 20)
         };
+    } catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+std::optional<MoveAcceptedEvent> JsonCodec::decode_move_accepted(const std::string& json_text) {
+    try {
+        const json payload = json::parse(json_text);
+        if (payload.at("type").get<std::string>() != Protocol::kMoveAccepted) {
+            return std::nullopt;
+        }
+
+        return MoveAcceptedEvent{
+            position_from_json(payload.at("src")),
+            position_from_json(payload.at("dest")),
+            payload.value("start_time_ms", 0LL),
+            payload.value("duration_ms", 0LL),
+            payload.value("current_time_ms", 0LL)
+        };
+    } catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+std::optional<MoveRejectedEvent> JsonCodec::decode_move_rejected(const std::string& json_text) {
+    try {
+        const json payload = json::parse(json_text);
+        if (payload.at("type").get<std::string>() != Protocol::kMoveRejected) {
+            return std::nullopt;
+        }
+
+        return MoveRejectedEvent{
+            position_from_json(payload.at("src")),
+            position_from_json(payload.at("dest")),
+            payload.value("reason", "")
+        };
+    } catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+std::optional<JumpStartedEvent> JsonCodec::decode_jump_started(const std::string& json_text) {
+    try {
+        const json payload = json::parse(json_text);
+        if (payload.at("type").get<std::string>() != Protocol::kJumpStarted) {
+            return std::nullopt;
+        }
+
+        return JumpStartedEvent{
+            position_from_json(payload.at("cell")),
+            payload.value("start_time_ms", 0LL),
+            payload.value("duration_ms", 0LL),
+            payload.value("current_time_ms", 0LL)
+        };
+    } catch (const std::exception&) {
+        return std::nullopt;
+    }
+}
+
+std::optional<MoveResolvedEvent> JsonCodec::decode_move_resolved(const std::string& json_text) {
+    try {
+        const json payload = json::parse(json_text);
+        if (payload.at("type").get<std::string>() != Protocol::kMoveResolved) {
+            return std::nullopt;
+        }
+
+        return MoveResolvedEvent{move_event_from_json(payload.at("move"))};
     } catch (const std::exception&) {
         return std::nullopt;
     }

@@ -15,6 +15,51 @@ AuthResult success(UserRecord user) {
     return AuthResult{AuthStatus::Success, std::move(user), "ok"};
 }
 
+bool table_has_column(sqlite3* db, const char* column_name) {
+    sqlite3_stmt* statement = nullptr;
+    if (sqlite3_prepare_v2(db, "PRAGMA table_info(users);", -1, &statement, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    bool found = false;
+    while (sqlite3_step(statement) == SQLITE_ROW) {
+        const char* name = reinterpret_cast<const char*>(sqlite3_column_text(statement, 1));
+        if (name != nullptr && std::string(name) == column_name) {
+            found = true;
+            break;
+        }
+    }
+
+    sqlite3_finalize(statement);
+    return found;
+}
+
+void migrate_legacy_schema(sqlite3* db) {
+    if (!table_has_column(db, "password_hash")) {
+        return;
+    }
+
+    const char* migration_sql =
+        "BEGIN;"
+        "ALTER TABLE users RENAME TO users_legacy;"
+        "CREATE TABLE users ("
+        "username TEXT PRIMARY KEY,"
+        "password TEXT NOT NULL,"
+        "score INTEGER NOT NULL DEFAULT 1200"
+        ");"
+        "INSERT INTO users (username, password, score) "
+        "SELECT username, salt || ':' || password_hash, rating FROM users_legacy;"
+        "DROP TABLE users_legacy;"
+        "COMMIT;";
+
+    char* error_message = nullptr;
+    if (sqlite3_exec(db, migration_sql, nullptr, nullptr, &error_message) != SQLITE_OK) {
+        std::string error = error_message != nullptr ? error_message : "migration error";
+        sqlite3_free(error_message);
+        throw std::runtime_error(error);
+    }
+}
+
 }  // namespace
 
 UserDatabase::UserDatabase(std::string db_path) : db_path_(std::move(db_path)) {
@@ -27,12 +72,13 @@ void UserDatabase::initialize_schema() const {
         throw std::runtime_error("Failed to open user database");
     }
 
+    migrate_legacy_schema(db);
+
     const char* sql =
         "CREATE TABLE IF NOT EXISTS users ("
         "username TEXT PRIMARY KEY,"
-        "password_hash TEXT NOT NULL,"
-        "salt TEXT NOT NULL,"
-        "rating INTEGER NOT NULL DEFAULT 1200"
+        "password TEXT NOT NULL,"
+        "score INTEGER NOT NULL DEFAULT 1200"
         ");";
 
     char* error_message = nullptr;
@@ -62,18 +108,18 @@ AuthResult UserDatabase::register_user(const std::string& username, const std::s
 
     const std::string salt = PasswordHasher::generate_salt();
     const std::string hash = PasswordHasher::hash_password(password, salt);
+    const std::string stored_password = PasswordHasher::format_stored_password(salt, hash);
 
     sqlite3_stmt* statement = nullptr;
-    const char* sql = "INSERT INTO users (username, password_hash, salt, rating) VALUES (?, ?, ?, ?);";
+    const char* sql = "INSERT INTO users (username, password, score) VALUES (?, ?, ?);";
     if (sqlite3_prepare_v2(db, sql, -1, &statement, nullptr) != SQLITE_OK) {
         sqlite3_close(db);
         return failure(AuthStatus::InvalidInput, "Failed to prepare registration.");
     }
 
     sqlite3_bind_text(statement, 1, username.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(statement, 2, hash.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(statement, 3, salt.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(statement, 4, EloRating::kStartingRating);
+    sqlite3_bind_text(statement, 2, stored_password.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(statement, 3, EloRating::kStartingRating);
 
     const int step_result = sqlite3_step(statement);
     sqlite3_finalize(statement);
@@ -97,7 +143,7 @@ AuthResult UserDatabase::authenticate(const std::string& username, const std::st
     }
 
     sqlite3_stmt* statement = nullptr;
-    const char* sql = "SELECT password_hash, salt, rating FROM users WHERE username = ?;";
+    const char* sql = "SELECT password, score FROM users WHERE username = ?;";
     if (sqlite3_prepare_v2(db, sql, -1, &statement, nullptr) != SQLITE_OK) {
         sqlite3_close(db);
         return failure(AuthStatus::InvalidInput, "Failed to prepare login.");
@@ -107,12 +153,12 @@ AuthResult UserDatabase::authenticate(const std::string& username, const std::st
 
     AuthResult result = failure(AuthStatus::UserNotFound, "User not found.");
     if (sqlite3_step(statement) == SQLITE_ROW) {
-        const std::string hash = reinterpret_cast<const char*>(sqlite3_column_text(statement, 0));
-        const std::string salt = reinterpret_cast<const char*>(sqlite3_column_text(statement, 1));
-        const int rating = sqlite3_column_int(statement, 2);
+        const std::string stored_password =
+            reinterpret_cast<const char*>(sqlite3_column_text(statement, 0));
+        const int score = sqlite3_column_int(statement, 1);
 
-        if (PasswordHasher::verify_password(password, salt, hash)) {
-            result = success(UserRecord{username, rating});
+        if (PasswordHasher::verify_stored_password(password, stored_password)) {
+            result = success(UserRecord{username, score});
         } else {
             result = failure(AuthStatus::InvalidCredentials, "Invalid password.");
         }
@@ -130,7 +176,7 @@ std::optional<UserRecord> UserDatabase::get_user(const std::string& username) co
     }
 
     sqlite3_stmt* statement = nullptr;
-    const char* sql = "SELECT rating FROM users WHERE username = ?;";
+    const char* sql = "SELECT score FROM users WHERE username = ?;";
     if (sqlite3_prepare_v2(db, sql, -1, &statement, nullptr) != SQLITE_OK) {
         sqlite3_close(db);
         return std::nullopt;
@@ -148,20 +194,20 @@ std::optional<UserRecord> UserDatabase::get_user(const std::string& username) co
     return user;
 }
 
-bool UserDatabase::update_rating(const std::string& username, int rating) {
+bool UserDatabase::update_score(const std::string& username, int score) {
     sqlite3* db = nullptr;
     if (sqlite3_open(db_path_.c_str(), &db) != SQLITE_OK) {
         return false;
     }
 
     sqlite3_stmt* statement = nullptr;
-    const char* sql = "UPDATE users SET rating = ? WHERE username = ?;";
+    const char* sql = "UPDATE users SET score = ? WHERE username = ?;";
     if (sqlite3_prepare_v2(db, sql, -1, &statement, nullptr) != SQLITE_OK) {
         sqlite3_close(db);
         return false;
     }
 
-    sqlite3_bind_int(statement, 1, rating);
+    sqlite3_bind_int(statement, 1, score);
     sqlite3_bind_text(statement, 2, username.c_str(), -1, SQLITE_TRANSIENT);
 
     const int step_result = sqlite3_step(statement);

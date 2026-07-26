@@ -1,5 +1,6 @@
 #include "NetworkBridge.hpp"
 
+#include "core/GameEvents.hpp"
 #include "engine/GameEngine.hpp"
 #include "model/Board.hpp"
 #include "model/GameSnapshot.hpp"
@@ -8,6 +9,23 @@
 #include "network/WebSocketServer.hpp"
 #include "storage/EloRating.hpp"
 #include "storage/UserDatabase.hpp"
+
+namespace {
+
+constexpr int kDisconnectForfeitSeconds = 20;
+
+const std::vector<std::string> kDefaultBoardRows = {
+    "bR bN bB bQ bK bB bN bR",
+    "bP bP bP bP bP bP bP bP",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    "wP wP wP wP wP wP wP wP",
+    "wR wN wB wQ wK wB wN wR"
+};
+
+}  // namespace
 
 NetworkBridge::NetworkBridge(
     GameEngine& engine,
@@ -27,12 +45,14 @@ void NetworkBridge::wire_event_handlers() {
 
     bus.subscribe<MoveAcceptedEvent>([this](const MoveAcceptedEvent& event) {
         server_.broadcast(JsonCodec::encode_move_accepted(event));
+        broadcast_snapshot();
     });
     bus.subscribe<MoveRejectedEvent>([this](const MoveRejectedEvent& event) {
         server_.broadcast(JsonCodec::encode_move_rejected(event));
     });
     bus.subscribe<JumpStartedEvent>([this](const JumpStartedEvent& event) {
         server_.broadcast(JsonCodec::encode_jump_started(event));
+        broadcast_snapshot();
     });
     bus.subscribe<MoveResolvedEvent>([this](const MoveResolvedEvent& event) {
         const Board& board = Board::getInstance();
@@ -97,17 +117,39 @@ bool NetworkBridge::try_start_game() {
 }
 
 void NetworkBridge::try_match_and_start() {
-    while (true) {
-        const std::optional<std::pair<Seeker, Seeker>> matched = matchmaking_.try_match();
-        if (!matched.has_value()) {
-            return;
-        }
-
-        lobby_.try_login(matched->first.connection_id, matched->first.username, matched->first.rating);
-        lobby_.try_login(matched->second.connection_id, matched->second.username, matched->second.rating);
-        broadcast_lobby_state();
-        try_start_game();
+    if (lobby_.is_started() && !engine_.is_game_over()) {
+        return;
     }
+
+    if (engine_.is_game_over()) {
+        prepare_rematch();
+    }
+
+    if (!lobby_.is_ready()) {
+        return;
+    }
+
+    const std::optional<LobbyPlayer>& white = lobby_.white_player();
+    const std::optional<LobbyPlayer>& black = lobby_.black_player();
+    if (!white.has_value() || !black.has_value()) {
+        return;
+    }
+
+    if (!matchmaking_.is_seeking(white->connection_id) ||
+        !matchmaking_.is_seeking(black->connection_id)) {
+        return;
+    }
+
+    matchmaking_.remove_seeker(white->connection_id);
+    matchmaking_.remove_seeker(black->connection_id);
+    try_start_game();
+}
+
+void NetworkBridge::prepare_rematch() {
+    lobby_.end_game();
+    pending_forfeit_.reset();
+    engine_.reset_for_new_game(kDefaultBoardRows);
+    broadcast_lobby_state();
 }
 
 GameSnapshot NetworkBridge::build_snapshot() const {
@@ -171,17 +213,34 @@ void NetworkBridge::handle_auth(const Protocol::InboundFrame& frame, const Proto
     }
 
     authenticated_connections_.insert(frame.connection_id);
-    authenticated_users_[frame.connection_id] = AuthenticatedUser{auth.user.username, auth.user.rating};
+    authenticated_users_[frame.connection_id] = AuthenticatedUser{auth.user.username, auth.user.score};
 
-    server_.send_to(frame.connection_id, JsonCodec::encode_auth_result(
-        AuthResultMessage{true, auth.user.username, auth.user.rating, "ok"}));
+    AuthResultMessage result_message{true, auth.user.username, auth.user.score, "ok"};
+    switch (lobby_.try_login(frame.connection_id, auth.user.username, auth.user.score)) {
+        case Lobby::JoinResult::White:
+            result_message.assigned_color = "white";
+            break;
+        case Lobby::JoinResult::Black:
+            result_message.assigned_color = "black";
+            break;
+        case Lobby::JoinResult::Full:
+            result_message.reason = "lobby_full";
+            break;
+        case Lobby::JoinResult::AlreadyJoined:
+            if (const std::optional<Color> color = lobby_.color_for_connection(frame.connection_id)) {
+                result_message.assigned_color = color == Color::White ? "white" : "black";
+            }
+            break;
+    }
+
+    server_.send_to(frame.connection_id, JsonCodec::encode_auth_result(result_message));
     broadcast_lobby_state();
 }
 
 void NetworkBridge::handle_seek(const Protocol::InboundFrame& frame) {
     if (authenticated_connections_.count(frame.connection_id) == 0 ||
         lobby_.is_started() ||
-        lobby_.color_for_connection(frame.connection_id).has_value()) {
+        !lobby_.color_for_connection(frame.connection_id).has_value()) {
         return;
     }
 
@@ -213,26 +272,34 @@ void NetworkBridge::handle_resign(const Protocol::InboundFrame& frame) {
     handle_forfeit(winner);
 }
 
-void NetworkBridge::handle_forfeit(Color winner) {
-    if (!lobby_.white_player().has_value() || !lobby_.black_player().has_value() || engine_.is_game_over()) {
+void NetworkBridge::sync_authenticated_user_rating(const std::string& username, int rating) {
+    for (auto& entry : authenticated_users_) {
+        if (entry.second.username == username) {
+            entry.second.rating = rating;
+        }
+    }
+}
+
+void NetworkBridge::finalize_match_with_elo(double white_score, const std::string& winner_color) {
+    if (!lobby_.white_player().has_value() || !lobby_.black_player().has_value()) {
+        server_.broadcast(JsonCodec::encode_game_over(GameOverMessage{}));
+        broadcast_snapshot();
         return;
     }
 
-    lobby_.set_winner(winner);
-    engine_.force_game_over(false);
-
-    const double white_score = winner == Color::White ? 1.0 : 0.0;
     const int white_rating = lobby_.white_player()->rating;
     const int black_rating = lobby_.black_player()->rating;
     const EloRating::RatingChange rating_change =
         EloRating::apply_match_result(white_rating, black_rating, white_score);
 
-    user_database_.update_rating(lobby_.white_player()->username, rating_change.white_rating);
-    user_database_.update_rating(lobby_.black_player()->username, rating_change.black_rating);
+    user_database_.update_score(lobby_.white_player()->username, rating_change.white_rating);
+    user_database_.update_score(lobby_.black_player()->username, rating_change.black_rating);
     lobby_.update_ratings(rating_change.white_rating, rating_change.black_rating);
+    sync_authenticated_user_rating(lobby_.white_player()->username, rating_change.white_rating);
+    sync_authenticated_user_rating(lobby_.black_player()->username, rating_change.black_rating);
 
     const GameOverMessage message{
-        winner == Color::White ? "white" : "black",
+        winner_color,
         lobby_.white_player()->username,
         lobby_.black_player()->username,
         rating_change.white_rating,
@@ -242,16 +309,23 @@ void NetworkBridge::handle_forfeit(Color winner) {
     };
     server_.broadcast(JsonCodec::encode_game_over(message));
     broadcast_snapshot();
+    prepare_rematch();
+}
+
+void NetworkBridge::handle_forfeit(Color winner) {
+    if (!lobby_.white_player().has_value() || !lobby_.black_player().has_value() || engine_.is_game_over()) {
+        return;
+    }
+
+    lobby_.set_winner(winner);
+    engine_.force_game_over(false);
+
+    const double white_score = winner == Color::White ? 1.0 : 0.0;
+    finalize_match_with_elo(white_score, winner == Color::White ? "white" : "black");
 }
 
 void NetworkBridge::handle_game_over() {
     if (lobby_.winner_color().has_value()) {
-        return;
-    }
-
-    if (!lobby_.white_player().has_value() || !lobby_.black_player().has_value()) {
-        server_.broadcast(JsonCodec::encode_game_over(GameOverMessage{}));
-        broadcast_snapshot();
         return;
     }
 
@@ -284,26 +358,7 @@ void NetworkBridge::handle_game_over() {
         lobby_.set_winner(Color::Black);
     }
 
-    const int white_rating = lobby_.white_player()->rating;
-    const int black_rating = lobby_.black_player()->rating;
-    const EloRating::RatingChange rating_change =
-        EloRating::apply_match_result(white_rating, black_rating, white_score);
-
-    user_database_.update_rating(lobby_.white_player()->username, rating_change.white_rating);
-    user_database_.update_rating(lobby_.black_player()->username, rating_change.black_rating);
-    lobby_.update_ratings(rating_change.white_rating, rating_change.black_rating);
-
-    const GameOverMessage message{
-        winner_color,
-        lobby_.white_player()->username,
-        lobby_.black_player()->username,
-        rating_change.white_rating,
-        rating_change.black_rating,
-        rating_change.white_delta,
-        rating_change.black_delta
-    };
-    server_.broadcast(JsonCodec::encode_game_over(message));
-    broadcast_snapshot();
+    finalize_match_with_elo(white_score, winner_color);
 }
 
 void NetworkBridge::clear_connection_state(const std::string& connection_id) {
@@ -348,6 +403,25 @@ void NetworkBridge::handle_disconnect(const std::string& connection_id) {
     clear_connection_state(connection_id);
 }
 
+bool NetworkBridge::can_control_piece(const std::string& connection_id, const Position& cell) const {
+    const std::optional<Color> player_color = lobby_.color_for_connection(connection_id);
+    if (!player_color.has_value()) {
+        return false;
+    }
+
+    const Board& board = Board::getInstance();
+    if (!board.isValidPosition(cell)) {
+        return false;
+    }
+
+    const Piece piece = board.at(cell);
+    if (piece.getKind() == Kind::Empty) {
+        return false;
+    }
+
+    return piece.getColor() == player_color.value();
+}
+
 void NetworkBridge::handle_inbound(const Protocol::InboundFrame& frame) {
     const std::optional<Protocol::InboundMessage> parsed = JsonCodec::parse_inbound(frame.payload);
     if (!parsed.has_value()) {
@@ -372,11 +446,23 @@ void NetworkBridge::handle_inbound(const Protocol::InboundFrame& frame) {
                 authenticated_connections_.count(frame.connection_id) == 0) {
                 return;
             }
+            if (!can_control_piece(frame.connection_id, parsed->src)) {
+                server_.send_to(
+                    frame.connection_id,
+                    JsonCodec::encode_move_rejected(
+                        MoveRejectedEvent{parsed->src, parsed->dest, "wrong_player"}
+                    )
+                );
+                return;
+            }
             engine_.request_move(parsed->src, parsed->dest);
             break;
         case Protocol::InboundMessage::Kind::Jump:
             if (!lobby_.is_started() ||
                 authenticated_connections_.count(frame.connection_id) == 0) {
+                return;
+            }
+            if (!can_control_piece(frame.connection_id, parsed->cell)) {
                 return;
             }
             engine_.jump(parsed->cell);

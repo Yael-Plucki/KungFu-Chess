@@ -37,6 +37,11 @@ void Lobby::start_game() {
     game_started_ = true;
 }
 
+void Lobby::end_game() {
+    game_started_ = false;
+    winner_.reset();
+}
+
 void Lobby::set_winner(Color color) {
     winner_ = color;
 }

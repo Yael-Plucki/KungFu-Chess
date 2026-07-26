@@ -1,5 +1,7 @@
 #include "GameEngine.hpp"
 #include "../core/GameEvents.hpp"
+#include "../io/BoardParser.hpp"
+#include "../model/GameConstants.hpp"
 
 GameEngine::GameEngine()
     : arbiter(), game_over(false) {}
@@ -28,7 +30,14 @@ MoveResult GameEngine::request_move(const Position& src, const Position& dest) {
         return {false, rejected.reason};
     }
 
-    eventBus.publish(MoveAcceptedEvent{src, dest});
+    const std::optional<ActiveMotionInfo> motion = arbiter.motion_from(src);
+    eventBus.publish(MoveAcceptedEvent{
+        src,
+        dest,
+        motion.has_value() ? motion->start_time : arbiter.get_current_time(),
+        motion.has_value() ? motion->duration : 0,
+        arbiter.get_current_time()
+    });
     return {true, "ok"};
 }
 
@@ -38,7 +47,13 @@ void GameEngine::jump(const Position& cell) {
     }
 
     arbiter.start_jump(cell);
-    eventBus.publish(JumpStartedEvent{cell});
+    const std::optional<ActiveMotionInfo> motion = arbiter.motion_from(cell);
+    eventBus.publish(JumpStartedEvent{
+        cell,
+        motion.has_value() ? motion->start_time : arbiter.get_current_time(),
+        motion.has_value() ? motion->duration : GameConstants::MS_PER_CELL,
+        arbiter.get_current_time()
+    });
 }
 
 void GameEngine::wait(int ms) {
@@ -69,6 +84,14 @@ void GameEngine::force_game_over(bool publish_event) {
     }
 }
 
+void GameEngine::reset_for_new_game(const std::vector<std::string>& board_rows) {
+    game_over = false;
+    stats = GameStats();
+    arbiter.reset();
+    BoardParser parser;
+    parser.parseRows(board_rows);
+}
+
 GameSnapshot GameEngine::snapshot(std::optional<Position> selected_cell) const {
     GameSnapshot snap = GameSnapshot::create(
         Board::getInstance(),
@@ -78,6 +101,8 @@ GameSnapshot GameEngine::snapshot(std::optional<Position> selected_cell) const {
         arbiter.get_current_time()
     );
     snap.stats = stats;
+    snap.cell_size = GameConstants::CELL_SIZE;
+    snap.side_panel_width = GameConstants::SIDE_PANEL_WIDTH;
     return snap;
 }
 

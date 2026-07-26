@@ -43,8 +43,24 @@ static void test_snapshot_round_trip_fields() {
     const std::string json_text = JsonCodec::encode_snapshot(snapshot);
     EXPECT_TRUE(json_text.find("\"type\":\"snapshot\"") != std::string::npos);
     EXPECT_TRUE(json_text.find("\"board_width\":3") != std::string::npos);
+    EXPECT_TRUE(json_text.find("\"cell_size\":60") != std::string::npos);
     EXPECT_TRUE(json_text.find("\"kind\":\"rook\"") != std::string::npos);
     EXPECT_TRUE(json_text.find("\"state\":\"moving\"") != std::string::npos);
+
+    const std::optional<GameSnapshot> decoded = JsonCodec::decode_snapshot(json_text);
+    EXPECT_TRUE(decoded.has_value());
+    EXPECT_EQ(decoded->cell_size, 60);
+    EXPECT_EQ(decoded->side_panel_width, 180);
+}
+
+static void test_move_accepted_round_trip() {
+    const std::string json_text = JsonCodec::encode_move_accepted(
+        MoveAcceptedEvent{Position(0, 1), Position(2, 1)});
+
+    const std::optional<MoveAcceptedEvent> decoded = JsonCodec::decode_move_accepted(json_text);
+    EXPECT_TRUE(decoded.has_value());
+    EXPECT_EQ(decoded->src, Position(0, 1));
+    EXPECT_EQ(decoded->dest, Position(2, 1));
 }
 
 static void test_move_rejected_encoding_includes_reason() {
@@ -59,6 +75,7 @@ int main() {
     RUN_TEST(test_parse_move_command);
     RUN_TEST(test_parse_jump_and_ping_commands);
     RUN_TEST(test_snapshot_round_trip_fields);
+    RUN_TEST(test_move_accepted_round_trip);
     RUN_TEST(test_move_rejected_encoding_includes_reason);
     return 0;
 }

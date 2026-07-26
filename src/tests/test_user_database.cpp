@@ -9,7 +9,7 @@ static void test_register_and_authenticate_user() {
     UserDatabase database(db_path.string());
     const AuthResult registered = database.register_user("alice", "secret");
     EXPECT_TRUE(registered.status == AuthStatus::Success);
-    EXPECT_EQ(registered.user.rating, 1200);
+    EXPECT_EQ(registered.user.score, 1200);
 
     const AuthResult login = database.authenticate("alice", "secret");
     EXPECT_TRUE(login.status == AuthStatus::Success);
@@ -27,22 +27,22 @@ static void test_rejects_wrong_password() {
     EXPECT_TRUE(login.status == AuthStatus::InvalidCredentials);
 }
 
-static void test_update_rating_persists() {
+static void test_update_score_persists() {
     const std::filesystem::path db_path = std::filesystem::temp_directory_path() / "kungfu_test_users_rating.db";
     std::filesystem::remove(db_path);
 
     UserDatabase database(db_path.string());
     database.register_user("carol", "secret");
-    EXPECT_TRUE(database.update_rating("carol", 1250));
+    EXPECT_TRUE(database.update_score("carol", 1250));
 
     const std::optional<UserRecord> user = database.get_user("carol");
     EXPECT_TRUE(user.has_value());
-    EXPECT_EQ(user->rating, 1250);
+    EXPECT_EQ(user->score, 1250);
 }
 
 int main() {
     RUN_TEST(test_register_and_authenticate_user);
     RUN_TEST(test_rejects_wrong_password);
-    RUN_TEST(test_update_rating_persists);
+    RUN_TEST(test_update_score_persists);
     return 0;
 }

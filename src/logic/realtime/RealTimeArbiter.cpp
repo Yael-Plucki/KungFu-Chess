@@ -208,3 +208,31 @@ std::vector<ActiveMotionInfo> RealTimeArbiter::active_motion_infos() const {
 
     return infos;
 }
+
+std::optional<ActiveMotionInfo> RealTimeArbiter::motion_from(const Position& src) const {
+    for (const Motion& motion : active_motions) {
+        if (motion.getSource() != src) {
+            continue;
+        }
+
+        const Piece& piece = motion.getPiece();
+        return ActiveMotionInfo{
+            true,
+            motion.getSource(),
+            motion.getDestination(),
+            motion.getStartTime(),
+            motion.getDuration(),
+            piece.getId(),
+            piece.getColor(),
+            piece.getKind()
+        };
+    }
+
+    return std::nullopt;
+}
+
+void RealTimeArbiter::reset() {
+    active_motions.clear();
+    current_time = 0;
+    next_motion_sequence = 0;
+}

@@ -1,5 +1,6 @@
 #include "HomeScreen.hpp"
 
+#include "model/Piece.hpp"
 #include "network/MatchmakingQueue.hpp"
 #include "network/RemoteGameSession.hpp"
 
@@ -30,14 +31,15 @@ bool read_line(std::istream& in, std::ostream& out, const std::string& prompt, s
 }
 
 AuthMode parse_auth_mode(const std::string& choice) {
-    if (choice == "2") {
+    if (choice == "2" || choice == "register" || choice == "create") {
         return AuthMode::Register;
     }
     return AuthMode::Login;
 }
 
-LoginResult read_credentials(std::istream& in, std::ostream& out) {
+LoginResult read_credentials(std::istream& in, std::ostream& out, AuthMode mode) {
     LoginResult result;
+    result.mode = mode;
 
     while (true) {
         if (!read_line(in, out, "Username: ", result.username)) {
@@ -102,12 +104,7 @@ LoginResult HomeScreen::prompt_auth(std::istream& in, std::ostream& out, RemoteG
             result.error = "Login cancelled.";
             return result;
         }
-        result.mode = parse_auth_mode(choice);
-        result = read_credentials(in, out);
-        if (result.success) {
-            result.mode = parse_auth_mode(choice);
-        }
-        return result;
+        return read_credentials(in, out, parse_auth_mode(choice));
     }
 
     render(out);
@@ -123,12 +120,7 @@ LoginResult HomeScreen::prompt_auth(std::istream& in, std::ostream& out, RemoteG
         return result;
     }
 
-    result.mode = parse_auth_mode(choice);
-    result = read_credentials(in, out);
-    if (result.success) {
-        result.mode = parse_auth_mode(choice);
-    }
-    return result;
+    return read_credentials(in, out, parse_auth_mode(choice));
 }
 
 bool HomeScreen::wait_for_lobby_state(RemoteGameSession& session, std::ostream& out) {
@@ -173,8 +165,7 @@ HomeMenuChoice HomeScreen::show_gui_menu(std::istream& in, std::ostream& out, co
     out << "Main Menu\n";
     out << "---------\n";
     out << "Signed in as: " << username << " (Rating: " << rating << ")\n";
-    out << "1) Play (find online match)\n";
-    out << "2) Exit\n";
+    out << "Press Enter to find a match, or type 2 to exit.\n";
 
     while (true) {
         std::string choice;
@@ -182,7 +173,7 @@ HomeMenuChoice HomeScreen::show_gui_menu(std::istream& in, std::ostream& out, co
             return HomeMenuChoice::Exit;
         }
 
-        if (choice == "1") {
+        if (choice.empty() || choice == "1") {
             return HomeMenuChoice::Play;
         }
         if (choice == "2") {
@@ -190,7 +181,7 @@ HomeMenuChoice HomeScreen::show_gui_menu(std::istream& in, std::ostream& out, co
             return HomeMenuChoice::Exit;
         }
 
-        out << "Invalid choice. Enter 1 or 2.\n";
+        out << "Invalid choice. Press Enter to play or type 2 to exit.\n";
     }
 }
 
@@ -200,6 +191,7 @@ SeekResult HomeScreen::seek_and_wait_for_match(
     const std::string& /*username*/
 ) {
     out << "\nSearching for opponent with ELO within +/-" << MatchmakingQueue::kRatingRange << "...\n";
+    out << "Both players must log in on their client to be matched.\n";
     session.send_seek();
 
     const auto deadline = std::chrono::steady_clock::now() +
@@ -301,6 +293,9 @@ bool HomeScreen::wait_for_auth(RemoteGameSession& session, std::ostream& out, co
     }
 
     out << "Authenticated. Rating: " << session.player_rating() << "\n";
+    if (const std::optional<Color> color = session.player_color()) {
+        out << "Assigned color: " << (*color == Color::White ? "White" : "Black") << "\n";
+    }
     return true;
 }
 

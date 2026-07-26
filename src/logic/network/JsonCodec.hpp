@@ -27,6 +27,7 @@ struct AuthResultMessage {
     std::string username;
     int rating = 1200;
     std::string reason;
+    std::optional<std::string> assigned_color;
 };
 
 struct GameOverMessage {
@@ -69,4 +70,8 @@ public:
     static std::optional<AuthResultMessage> decode_auth_result(const std::string& json_text);
     static std::optional<GameOverMessage> decode_game_over(const std::string& json_text);
     static std::optional<PlayerDisconnectedMessage> decode_player_disconnected(const std::string& json_text);
+    static std::optional<MoveAcceptedEvent> decode_move_accepted(const std::string& json_text);
+    static std::optional<MoveRejectedEvent> decode_move_rejected(const std::string& json_text);
+    static std::optional<JumpStartedEvent> decode_jump_started(const std::string& json_text);
+    static std::optional<MoveResolvedEvent> decode_move_resolved(const std::string& json_text);
 };

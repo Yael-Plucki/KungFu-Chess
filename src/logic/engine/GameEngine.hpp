@@ -7,6 +7,7 @@
 #include "../rules/RuleEngine.hpp"
 #include "../realtime/RealTimeArbiter.hpp"
 #include <string>
+#include <vector>
 
 
 
@@ -51,6 +52,8 @@ public:
     bool is_game_over() const;
 
     void force_game_over(bool publish_event = true);
+
+    void reset_for_new_game(const std::vector<std::string>& board_rows);
 
     GameSnapshot snapshot(std::optional<Position> selected_cell = std::nullopt) const;
 

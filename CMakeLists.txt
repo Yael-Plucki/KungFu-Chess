@@ -86,6 +86,7 @@ set(NETWORK_SERVER_SRCS
 )
 set(NETWORK_CLIENT_SRCS
     ${NETWORK_SHARED_SRCS}
+    src/ui/network/ClientBoardSync.cpp
     src/ui/network/RemoteGameSession.cpp
     src/ui/network/WebSocketClient.cpp
 )

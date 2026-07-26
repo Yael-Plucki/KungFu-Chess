@@ -15,7 +15,10 @@ void PieceAnimator::enter_state(const std::string& state) {
 }
 
 void PieceAnimator::sync(const SnapshotPiece& piece) {
-    if (piece.state == State::Moving) {
+    const bool visually_moving =
+        piece.state == State::Moving || piece.motion.has_value();
+
+    if (visually_moving) {
         const bool motion_anim =
             current_state_name == "idle" ||
             current_state_name == "long_rest" ||
@@ -31,7 +34,7 @@ void PieceAnimator::sync(const SnapshotPiece& piece) {
         }
     }
 
-    last_game_state = piece.state;
+    last_game_state = visually_moving ? State::Moving : piece.state;
 }
 
 int PieceAnimator::current_frame(const AnimationConfig& config) const {

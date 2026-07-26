@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 #include "../model/ActiveMotionInfo.hpp"
 #include "../model/Board.hpp"
@@ -29,6 +30,8 @@ public:
     bool has_active_motion() const;
     long long get_current_time() const;
     std::vector<ActiveMotionInfo> active_motion_infos() const;
+    std::optional<ActiveMotionInfo> motion_from(const Position& src) const;
+    void reset();
 
 private:
     std::vector<Motion> active_motions;

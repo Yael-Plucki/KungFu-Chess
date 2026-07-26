@@ -14,7 +14,10 @@ public:
     explicit ImageView(std::string assets_root = "lib/CTD26/assets (2)/assets/images/pieces");
 
     void render(const GameSnapshot& snapshot, const AnimatorRegistry& animators);
+    void warm_cache(const GameSnapshot& snapshot, const AnimatorRegistry& animators);
     void draw_disconnect_banner(int seconds_remaining);
+    void draw_game_over_banner();
+    void draw_error_banner(const std::string& message);
     const cv::Mat& frame() const { return canvas.get_mat(); }
 
 private:
